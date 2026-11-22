@@ -142,6 +142,10 @@ def main(argv=None):
         if not a.replay_root or not rch:
             p.error("--replay-frac > 0 needs --replay-root (and optionally --replay-chunks) with Q&A chunks")
         it = mixed(it, data.batches(rch, a.replay_root, a.batch, a.seed + 1, negs=a.replay_negs), a.replay_frac, a.batch)
+    m = {"step": 0}
+    if a.steps == 0:  # eval only, e.g. the authors' head on quantized-backbone vectors
+        m.update(score(model, g, h, dev, dims), **choice_scores(model, a.choice_eval, dev))
+        print(json.dumps(m), flush=True)
     for step in range(1, a.steps + 1):
         b = next(it)
         n = T(b["n"]) if "n" in b else None

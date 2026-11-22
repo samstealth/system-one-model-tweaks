@@ -89,3 +89,10 @@ def test_labeled_split_is_question_disjoint(tmp_path):
     kept = [r for r in mc if not b.labeled_test(b.question_of(r))]
     assert test_q and not test_q & {b.question_of(r) for r in kept}
     assert all(": " in o for r in lab for o in r["options"])
+
+
+def test_eval_only(tmp_path):
+    root = make_root(tmp_path / "qa", [("shard_05", 0), ("shard_05", 83), ("shard_00", 28)], negs={("shard_00", 28)})
+    r = train.main(["--root", root, "--out", str(tmp_path / "run"), "--width", "32", "--proj", "16", "--steps", "0",
+                    "--gen-limit", "256", "--hn-limit", "256"])
+    assert r["step"] == 0 and "tricky_top1" in r
