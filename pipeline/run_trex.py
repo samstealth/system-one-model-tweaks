@@ -71,6 +71,11 @@ def body(tag, ckpt, model, seeds):
     open("/tmp/rec.py", "w").write(RECORDER)
     procs = []
     if model == "clm":
+        if not os.path.exists("/data/qwen3-8b/config.json"):  # fresh volume: fetch the encoder the pipeline pins
+            from huggingface_hub import snapshot_download
+            snapshot_download("Qwen/Qwen3-8B", revision="b968826d9c46dd6066d109eabc6255188de91218", local_dir="/data/qwen3-8b",
+                              allow_patterns=["*.json", "*.safetensors", "*.txt", "*.jinja"])
+            vol.commit()
         log = open("/tmp/enc.log", "w")
         e = subprocess.Popen("vllm serve /data/qwen3-8b --served-model-name qwen3-8b --runner pooling --enable-prefix-caching "
                              "--max-model-len 2048 --port 8090 --gpu-memory-utilization 0.6", shell=True, stdout=log, stderr=log)
