@@ -38,7 +38,7 @@ BACKBONES = {
     # Released after vllm 0.11 / transformers 4.x: run these with CLM_NEW_STACK=1 (unpinned vllm and
     # transformers) and, if vLLM's pooling runner rejects the architecture, --engine hf.
     # needs vLLM >= 0.35 (unreleased on 22 Nov 2026): run with CLM_IMAGE=vllm/vllm-openai:inkling-2-mini
-    "inkling-2-mini": dict(repo="thinkingmachines/Inkling-2-Mini", hidden=2304, new=True),   # Inkling2LoopForConditionalGeneration
+    "inkling-2-mini": dict(repo="thinkingmachines/Inkling-2-Mini", hidden=2304, new=True, skip_lm_head=True),   # Inkling2LoopForConditionalGeneration
     "muse-glimmer-30b": dict(repo="meta-models/Muse-Glimmer-30B", hidden=6656, new=True),    # MuseGlimmerForConditionalGeneration
 }
 CAP = 2047  # token cap per side, the repo's serving default
@@ -58,6 +58,29 @@ vol = modal.Volume.from_name("clm-data", create_if_missing=True, version=2)
 app = modal.App("clm-innovations-embed")
 
 
+def _skip_lm_head_in_pooling_loader():
+    """Workaround for vLLM's Inkling2LoopForEmbedding (nightly, Nov 2026), which raises
+    'Unexpected checkpoint tensor: lm_head.weight' because the checkpoint ships its unembedding
+    (model.llm.unembed.weight, renamed to lm_head.weight) and the pooling wrapper has no LM head.
+    We drop that tensor before load_weights sees it. The engine must run in-process so the patch
+    applies to the worker that loads the weights."""
+    os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"
+    from vllm.model_executor.models import ModelRegistry
+    names = [a for a in ModelRegistry.get_supported_archs() if "Inkling" in a and "Embed" in a]
+    for arch in names:
+        cls = ModelRegistry._try_load_model_cls(arch)
+        if cls is None or getattr(cls, "_clm_patched", False):
+            continue
+        orig = cls.load_weights
+
+        def load_weights(self, weights, _orig=orig):
+            keep = ((n, w) for n, w in weights if not ("lm_head" in n or n.endswith("unembed.weight")))
+            return _orig(self, keep)
+
+        cls.load_weights, cls._clm_patched = load_weights, True
+    print("patched lm_head skip for", names, flush=True)
+
+
 @app.cls(image=image, volumes={"/data": vol}, gpu=os.environ.get("CLM_GPU", "L40S"), cpu=8, memory=64000,
          timeout=6 * 3600)  # gated repos: add secrets=[modal.Secret.from_name("huggingface")]
 class Embedder:
@@ -70,6 +93,8 @@ class Embedder:
         from transformers import AutoTokenizer
         self.tok = AutoTokenizer.from_pretrained(spec["repo"], trust_remote_code=spec.get("trust_remote_code", False))
         if self.engine == "vllm":
+            if spec.get("skip_lm_head"):
+                _skip_lm_head_in_pooling_loader()
             from vllm import LLM
             kw = {k: v for k, v in spec.items() if k in ("quantization", "trust_remote_code")}
             if spec.get("new"):
