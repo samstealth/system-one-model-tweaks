@@ -96,3 +96,19 @@ def test_eval_only(tmp_path):
     r = train.main(["--root", root, "--out", str(tmp_path / "run"), "--width", "32", "--proj", "16", "--steps", "0",
                     "--gen-limit", "256", "--hn-limit", "256"])
     assert r["step"] == 0 and "tricky_top1" in r
+
+
+def test_distill_anchor_and_interpolate(tmp_path):
+    from innovations import interpolate
+    root = make_root(tmp_path / "qa", [("shard_05", 0), ("shard_05", 83), ("shard_00", 28)], negs={("shard_00", 28)})
+    r1 = train.main(["--root", root, "--out", str(tmp_path / "t"), "--width", "32", "--proj", "16", "--steps", "10",
+                     "--batch", "64", "--eval-every", "10", "--gen-limit", "256", "--hn-limit", "256", "--lr", "0.01"])
+    teacher = str(tmp_path / "t" / "final_authors_layout.pt")
+    r2 = train.main(["--root", root, "--out", str(tmp_path / "s"), "--init", teacher, "--distill-from", teacher,
+                     "--distill-weight", "1.0", "--anchor-weight", "0.1", "--steps", "10", "--batch", "64",
+                     "--eval-every", "10", "--gen-limit", "256", "--hn-limit", "256", "--lr", "0.01"])
+    assert "tricky_top1" in r2
+    out = str(tmp_path / "w.pt")
+    interpolate.main(["--a", teacher, "--b", str(tmp_path / "s" / "final_authors_layout.pt"), "--alpha", "0.0", "--out", out])
+    A, W = torch.load(teacher, weights_only=False), torch.load(out, weights_only=False)
+    assert all(torch.allclose(A["state_head"][k].float(), W["state_head"][k]) for k in A["state_head"])

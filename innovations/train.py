@@ -18,7 +18,7 @@ import numpy as np
 import torch
 
 from innovations import data, evals
-from innovations.heads import HeadConfig, TwoTower, model_loss
+from innovations.heads import HeadConfig, TwoTower, anchor_loss, distill_loss, model_loss
 
 
 def build_eval(root, gen_limit, hn_limit):
@@ -95,6 +95,10 @@ def main(argv=None):
     p.add_argument("--hard-neg-weight", type=float, default=1.0,
                    help="weight on hard-negative logits (added as log w); the neg-embeddings card reports 2.0 as best")
     p.add_argument("--chunks", default="", help="comma list like shard_05/0,shard_05/1 (default: all non-held-out)")
+    p.add_argument("--distill-from", default="", help="frozen teacher head (authors' layout or TwoTower .pt) to keep close to")
+    p.add_argument("--distill-weight", type=float, default=0.0)
+    p.add_argument("--distill-temp", type=float, default=1.0)
+    p.add_argument("--anchor-weight", type=float, default=0.0, help="L2 pull toward the --init weights")
     p.add_argument("--init", default="", help="TwoTower .pt or the authors' head .pt (separate tower only)")
     p.add_argument("--gen-limit", type=int, default=20480)
     p.add_argument("--hn-limit", type=int, default=8192)
@@ -127,6 +131,12 @@ def main(argv=None):
     else:
         model = TwoTower(cfg)
     model.to(dev)
+    teacher = None
+    if a.distill_from:
+        ck = torch.load(a.distill_from, map_location="cpu", weights_only=False)
+        teacher = TwoTower.load(a.distill_from) if "cfg" in ck and "model" in ck else TwoTower.from_authors(a.distill_from)
+        teacher.to(dev).eval().requires_grad_(False)
+    ref_params = [p_.detach().clone() for p_ in model.parameters()] if a.anchor_weight > 0 else None
     lr = a.lr or 2e-3 * math.sqrt(1024 / a.width) * math.sqrt(a.batch / 1024)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)
 
@@ -152,7 +162,12 @@ def main(argv=None):
         b = next(it)
         n = T(b["n"]) if "n" in b else None
         c = torch.from_numpy(b["c"].astype(np.int64)).to(dev) if "n" in b else None
-        loss = model_loss(model, T(b["q"]), T(b["a"]), torch.from_numpy(b["doc"]).to(dev), n, c, a.hard_neg_weight)
+        q_, a_ = T(b["q"]), T(b["a"])
+        loss = model_loss(model, q_, a_, torch.from_numpy(b["doc"]).to(dev), n, c, a.hard_neg_weight)
+        if teacher is not None and a.distill_weight > 0:
+            loss = loss + a.distill_weight * distill_loss(model, teacher, q_, a_, n, c, a.distill_temp)
+        if ref_params is not None:
+            loss = loss + a.anchor_weight * anchor_loss(model, ref_params)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

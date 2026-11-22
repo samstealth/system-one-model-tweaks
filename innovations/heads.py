@@ -113,7 +113,10 @@ class TwoTower(nn.Module):
     def from_authors(cls, path):
         """Load jackyk02/qwen3_8b_head checkpoints (or the baseline trainer's best.pt)."""
         ck = torch.load(path, map_location="cpu", weights_only=False)
-        m = cls(HeadConfig())
+        sd = ck["state_head"]  # infer the layout from the weights, so exported non-default heads load too
+        n_hidden = len({k.split(".")[1] for k in sd if k.startswith("hidden.")})
+        m = cls(HeadConfig(in_dim=sd["inp.weight"].shape[1], width=sd["inp.weight"].shape[0],
+                           depth=n_hidden + 2, proj=sd["out.weight"].shape[0]))
         m.state_head.load_state_dict(ck["state_head"])
         m.action_head.load_state_dict(ck["action_head"])
         m.logit_scale.data.copy_(torch.as_tensor(ck["logit_scale"]).float())
@@ -183,3 +186,36 @@ def model_loss(model, q, a, doc=None, n=None, ncnt=None, neg_weight=1.0):
         zn = F.normalize(cut(zn_full), dim=-1) if zn_full is not None else None
         total = total + info_nce(zq, za, s, doc, zn, ncnt, neg_weight)
     return total / len(dims)
+
+
+def logits_for(model, q, a, n=None, ncnt=None):
+    """State-to-action logits over in-batch actions plus each row's own hard negatives (masked if absent)."""
+    zq, za = model.encode_state(q), model.encode_action(a)
+    lg = model.scale() * zq @ za.t()
+    if n is not None:
+        k, K, D = n.shape
+        zn = model.encode_action(n.reshape(-1, D)).view(k, K, -1)
+        ln = model.scale() * torch.einsum("bd,bkd->bk", zq[:k], zn)
+        ln = ln.masked_fill(torch.arange(K, device=q.device)[None] >= ncnt[:, None], float("-inf"))
+        if k < len(q):
+            ln = torch.cat([ln, torch.full((len(q) - k, K), float("-inf"), device=q.device)])
+        lg = torch.cat([lg, ln], 1)
+    return lg
+
+
+def distill_loss(student, teacher, q, a, n=None, ncnt=None, temp=1.0):
+    """Learning-without-forgetting: KL(teacher || student) over the same candidate sets, so new skills
+    are learned while the teacher's preferences (e.g. the authors' post head's T-Rex behaviour) are kept."""
+    with torch.no_grad():
+        t = logits_for(teacher, q, a, n, ncnt) / temp
+    s_ = logits_for(student, q, a, n, ncnt) / temp
+    finite = torch.isfinite(t)
+    pt = torch.softmax(t, -1)
+    lt = torch.log_softmax(t, -1).masked_fill(~finite, 0.0)
+    ls = torch.log_softmax(s_, -1).masked_fill(~finite, 0.0)
+    return (pt * (lt - ls)).sum(-1).mean() * temp * temp
+
+
+def anchor_loss(model, ref_params):
+    """L2 pull toward the starting weights (a cheap stand-in for EWC)."""
+    return sum(((p - r) ** 2).sum() for p, r in zip(model.parameters(), ref_params))
