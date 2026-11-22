@@ -83,9 +83,32 @@ Same head trained from scratch on each backbone's vectors of the same 96k-pair s
 |---|---|---|---|
 | Qwen3-8B | 4096 | 34.2% | 48.3% |
 | **Muse Glimmer 30B** | 6656 | **36.9%** | **53.3%** |
-| Inkling 2 Mini | 2304 | not run, see `inkling_attempts.md` | |
+| Inkling 2 Mini (B200 only) | 2304 | 31.8% | 40.1% |
+
+Inkling 2 Mini needs a Blackwell GPU in vLLM's nightly image and a loader patch: see `inkling_attempts.md`.
+After the same post-training, Muse is best on ARC, CSQA and Q&A and Qwen on intent routing.
 
 ## 5. Post-training (idea 5)
 
-Pending: listwise post-training against the authors' post-trained head on banking77, CLINC, tool choice,
-ARC, CommonsenseQA and label reading, then T-Rex.
+Full table, T-Rex runs and costs: `results/innovations/slice_run_2026-11-22.md`.
+
+Listwise post-training from the authors' mid-trained head: 400 steps, sibling options as hard negatives,
+and 40% replay of published Q&A vectors **with** their hard negatives. Compared with the authors'
+post-trained head, on Qwen3-8B vectors:
+
+| Test | CLM post head | Ours (`post_choice_hn`) |
+|---|---|---|
+| Tricky Q&A | 66.1% | **68.7%** |
+| General Q&A | **81.8%** | 80.2% |
+| Tool choice (Glaive) | 56.0% | **97.5%** |
+| Ticket routing (Banking77) | 22.1% | **83.4%** |
+| Intent routing (CLINC) | 29.0% | **86.1%** |
+| Label reading | 32.9% | **50.8%** |
+| ARC / CommonsenseQA | 30.6% / 30.7% | **42.3% / 46.0%** |
+| **T-Rex courses survived (shield on)** | **5/5** | 0/5 |
+
+- Replay without hard negatives cost 5.3 points tricky; with them it gains 2.6. That matches the baseline's own lesson.
+- The choice gains are in-distribution (test rows come from the training sources).
+- **T-Rex is lost.** The authors' mid head also survives 0/5, so T-Rex skill comes only from their agent
+  post-training. All our variants wash it out, including a gentle run starting from their post head.
+  Next step: put agent trajectories (ADP) into the post-training mix.
