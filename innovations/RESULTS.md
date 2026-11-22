@@ -1,0 +1,91 @@
+# Results (22 November 2026)
+
+Everything here was measured, not estimated. "Tricky" is the hard-negative Q&A test (gold answer against
+its own up-to-10 Gemini wrong answers; CLM-8B publishes 69.2%). "General" is in-batch top-1 retrieval over
+1,024-pair blocks with same-document pairs masked. Raw numbers: `results/innovations/`.
+
+## 1. Checking the eval code against the authors' heads
+
+Our `evals.py` on the published vectors (first 20,000 rows of `shard_00/0028`, 20,480 rows of `shard_05/0083`):
+
+| Authors' head | Tricky (ours) | Tricky (published) | General |
+|---|---|---|---|
+| pre-trained | 51.3% | 52.1% | 83.6% |
+| mid-trained | 68.8% | 69.2% | 83.9% |
+| post-trained | 68.2% | 68.5% | 83.9% |
+
+## 2. Quantization (idea 3)
+
+**Backbone latency**, batch 1, one L40S, vLLM 0.11, mean of 30 runs (`backbone_latency_l40s.json`):
+
+| Backbone | 64 tokens | 256 tokens | 1024 tokens |
+|---|---|---|---|
+| Qwen3-8B bf16 (CLM) | 21.1 ms | 22.0 ms | 24.3 ms |
+| Qwen3-8B FP8 | 16.2 ms | 16.8 ms | 19.1 ms |
+| Qwen3-8B AWQ 4-bit | **13.2 ms** | **13.8 ms** | **15.5 ms** |
+
+**Does CLM's head survive a quantized backbone?** The authors' mid-trained head, unchanged, scored on our
+rebuilt 12k-pair test slice (contexts cut to 512 tokens, so absolute numbers sit below the published 69%):
+
+| Vectors from | Tricky | General |
+|---|---|---|
+| Qwen3-8B bf16 | 66.4% | 81.8% |
+| Qwen3-8B FP8 | 65.6% | 81.7% |
+
+FP8 costs 0.7 points tricky for a 22 to 24% faster backbone. AWQ accuracy: not yet measured.
+
+**Heads and action cache**, the authors' mid-trained head, CPU (`quant_heads_mid.json`):
+
+| Variant | Tricky | Head size | Cache for 10k actions |
+|---|---|---|---|
+| fp32 | 68.8% | 75.6 MB | 20.5 MB |
+| bf16 | 68.9% | 37.8 MB | 10.2 MB |
+| int8 weights, per channel | 68.8% | 19.0 MB | 20.5 MB |
+| int8 dynamic (weights and activations) | **49.1%** | 18.9 MB | 20.5 MB |
+| int8 action cache | 68.0% | 75.6 MB | 5.2 MB |
+| 1-bit action cache | 58.2% | 75.6 MB | 0.6 MB |
+
+Weight-only int8 and bf16 are free. Quantizing activations breaks the head (Qwen's hidden states have large
+outlier dimensions), so keep activations in 16-bit.
+
+## 3. Head layout: embedding dimensions and a shared space (ideas 2 and 4)
+
+CPU, from scratch, matched budget: 12 published chunks (1.2M pairs), batch 1,024, 3,000 steps, seed 1234.
+This is far from convergence (the authors' head reaches general loss 0.63, these sit near 1.4 to 1.7), so it
+ranks layouts by how fast they learn, not by their final ceiling.
+
+| Layout | Params | General | Tricky |
+|---|---|---|---|
+| Baseline: 2 separate heads, 1536 wide, 512 out | 18.9M | 56.5% | 34.2% |
+| **Shared head** (one head for states and actions) | **9.4M** | **64.8%** | 35.8% |
+| Shared trunk + 64-rank adapter per side | 9.8M | 64.2% | **36.1%** |
+| Separate, 768 wide | 8.3M | 59.1% | 34.9% |
+| Separate, 2 layers (no hidden block) | 14.2M | 57.3% | 32.8% |
+| Separate, 128 out | 17.7M | 58.0% | 34.9% |
+| Matryoshka 1024 out, read at 64 / 128 / 256 / 512 / 1024 | 20.5M | 58.7% at every size | 35.6% to 35.9% |
+
+What this says, at this scale:
+- **A shared embedding space learns fastest**, with half the parameters: +8 points general and +1.6 to
+  1.9 tricky over the baseline at the same step count.
+- **Output size barely matters**: a Matryoshka head is as good at 64 dims as at 1024. A 64-dim action
+  cache is 8x smaller than CLM's 512-dim one.
+- Depth matters more than width: dropping the hidden block hurts tricky; halving the width does not.
+
+Open question: does the shared head's lead survive full training, or is it only faster early on? That is the
+first thing to check at full scale (`modal_train.py --tower shared_adapter`, about $10 on the published vectors).
+
+## 4. New backbones (idea 1)
+
+Same head trained from scratch on each backbone's vectors of the same 96k-pair slice, 3,000 steps
+(`bb_*`). The slice is tiny and both heads overfit it, so this is a screening signal, not a final score.
+
+| Backbone | Hidden | Tricky | General |
+|---|---|---|---|
+| Qwen3-8B | 4096 | 34.2% | 48.3% |
+| **Muse Glimmer 30B** | 6656 | **36.9%** | **53.3%** |
+| Inkling 2 Mini | 2304 | not run, see `inkling_attempts.md` | |
+
+## 5. Post-training (idea 5)
+
+Pending: listwise post-training against the authors' post-trained head on banking77, CLINC, tool choice,
+ARC, CommonsenseQA and label reading, then T-Rex.

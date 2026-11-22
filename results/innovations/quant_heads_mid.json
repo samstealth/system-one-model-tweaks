@@ -1,37 +1,37 @@
 {
  "fp32": {
   "tricky_top1": 0.6877,
-  "head_ms_cpu": 7.462,
+  "head_ms_cpu": 1.659,
   "head_MB": 75.6,
   "cache_MB_10000_actions": 20.48
  },
  "bf16": {
   "tricky_top1": 0.6889,
-  "head_ms_cpu": 1.677,
+  "head_ms_cpu": 1.444,
   "head_MB": 37.8,
   "cache_MB_10000_actions": 10.24
  },
  "int8-dyn": {
   "tricky_top1": 0.4908,
-  "head_ms_cpu": 1.664,
-  "head_MB": 0.0,
+  "head_ms_cpu": 1.239,
+  "head_MB": 18.9,
   "cache_MB_10000_actions": 20.48
  },
  "int8-weights": {
   "tricky_top1": 0.6876,
-  "head_ms_cpu": 4.517,
+  "head_ms_cpu": 3.658,
   "head_MB": 19.0,
   "cache_MB_10000_actions": 20.48
  },
  "cache-int8": {
   "tricky_top1": 0.6798,
-  "head_ms_cpu": 1.448,
+  "head_ms_cpu": 1.455,
   "head_MB": 75.6,
   "cache_MB_10000_actions": 5.16
  },
  "cache-binary": {
   "tricky_top1": 0.5824,
-  "head_ms_cpu": 1.506,
+  "head_ms_cpu": 1.885,
   "head_MB": 75.6,
   "cache_MB_10000_actions": 0.64
  }

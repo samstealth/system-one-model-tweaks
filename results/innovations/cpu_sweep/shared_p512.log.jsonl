@@ -1,0 +1,3 @@
+{"step": 1000, "loss": 1.8359, "minutes": 7.27, "gen_loss": 1.7331, "gen_top1": 0.5524, "tricky_top1": 0.3448, "tricky_n": 19136}
+{"step": 2000, "loss": 1.3416, "minutes": 14.87, "gen_loss": 1.4797, "gen_top1": 0.6186, "tricky_top1": 0.355, "tricky_n": 19136}
+{"step": 3000, "loss": 1.1764, "minutes": 22.46, "gen_loss": 1.3656, "gen_top1": 0.6482, "tricky_top1": 0.3577, "tricky_n": 19136}
