@@ -97,8 +97,8 @@ python -m innovations.build_choice_data --src choice_src --out choice
 modal volume put clm-data choice /choice
 modal run --detach innovations/modal_embed.py --job choice --backbone qwen3-8b
 modal run --detach innovations/modal_train.py --args "--root /data/emb/qwen3-8b --chunks shard_10/0,shard_10/1,shard_10/2 \
-  --hard-negs --init /data/heads/qwen3_8b_midtrained_head.pt --replay-root /data \
-  --replay-chunks shard_00/0,shard_00/1,shard_00/2 --replay-negs --replay-frac 0.4 \
+  --hard-negs --init /data/heads/qwen3_8b_midtrained_head.pt --replay-root /data/emb/qwen3-8b \
+  --replay-chunks shard_00/0,shard_00/1,shard_00/2 --replay-frac 0.4 \
   --choice-eval /data/emb/qwen3-8b --lr 0.0003 --steps 400 --batch 4096 --out /data/runs/post_choice"
 modal run run_trex.py --tag choice --ckpt /data/runs/post_choice/final_authors_layout.pt
 ```

@@ -22,6 +22,7 @@ Backbones (verify ids on the Hub before a long run; they were checked on 22 Nov 
     modal run --detach modal_embed.py --job qa --backbone inkling-2-mini --gpu H100
     modal run --detach modal_embed.py --job choice --backbone qwen3-8b
     modal run modal_embed.py --job latency --backbone qwen3-8b,qwen3-8b-fp8,qwen3-8b-awq
+    modal run modal_embed.py --job heads      # the authors' heads into /data/heads
 """
 import json
 import os
@@ -173,8 +174,23 @@ def run_job(job, backbone, src, chunk=100000, engine="vllm", state_format="{cont
     return root
 
 
+@app.function(image=image, volumes={"/data": vol}, timeout=1800)
+def fetch_heads():
+    """The authors' three released heads, for warm starts and for scoring quantized backbones."""
+    import shutil
+    from huggingface_hub import hf_hub_download
+    os.makedirs("/data/heads", exist_ok=True)
+    for f in ("qwen3_8b_pretrained_head.pt", "qwen3_8b_midtrained_head.pt", "qwen3_8b_posttrained_head.pt"):
+        shutil.copyfile(hf_hub_download("jackyk02/qwen3_8b_head", f), "/data/heads/" + f)
+    vol.commit()
+    return sorted(os.listdir("/data/heads"))
+
+
 @app.local_entrypoint()
 def main(job: str = "qa", backbone: str = "qwen3-8b", src: str = "", engine: str = "vllm"):
+    if job == "heads":
+        print(fetch_heads.remote())
+        return
     if job == "latency":
         out = {}
         for b in backbone.split(","):
