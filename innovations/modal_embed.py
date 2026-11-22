@@ -37,7 +37,8 @@ BACKBONES = {
     "qwen3-4b": dict(repo="Qwen/Qwen3-4B"),
     # Released after vllm 0.11 / transformers 4.x: run these with CLM_NEW_STACK=1 (unpinned vllm and
     # transformers) and, if vLLM's pooling runner rejects the architecture, --engine hf.
-    # needs vLLM >= 0.35 (unreleased on 22 Nov 2026): run with CLM_IMAGE=vllm/vllm-openai:inkling-2-mini
+    # needs vLLM >= 0.35 (unreleased on 22 Nov 2026): run with CLM_IMAGE=vllm/vllm-openai:inkling-2-mini CLM_GPU=B200
+    # (its conv_mix kernel has no H100 build; NVFP4 experts)
     "inkling-2-mini": dict(repo="thinkingmachines/Inkling-2-Mini", hidden=2304, new=True, skip_lm_head=True),   # Inkling2LoopForConditionalGeneration
     "muse-glimmer-30b": dict(repo="meta-models/Muse-Glimmer-30B", hidden=6656, new=True),    # MuseGlimmerForConditionalGeneration
 }
@@ -66,18 +67,23 @@ def _skip_lm_head_in_pooling_loader():
     applies to the worker that loads the weights."""
     os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"
     from vllm.model_executor.models import ModelRegistry
-    names = [a for a in ModelRegistry.get_supported_archs() if "Inkling" in a and "Embed" in a]
-    for arch in names:
-        cls = ModelRegistry._try_load_model_cls(arch)
-        if cls is None or getattr(cls, "_clm_patched", False):
-            continue
-        orig = cls.load_weights
+    # The embedding class is generated on the fly from the registered *ForConditionalGeneration class,
+    # and the check that raises lives in a base class's load_weights, so patch every class in the MRO
+    # that defines load_weights itself.
+    names = []
+    for arch in [a for a in ModelRegistry.get_supported_archs() if "Inkling" in a]:
+        top = ModelRegistry._try_load_model_cls(arch)
+        for cls in (top.__mro__ if top is not None else ()):
+            if "load_weights" not in cls.__dict__ or cls.__dict__.get("_clm_patched"):
+                continue
+            orig = cls.__dict__["load_weights"]
 
-        def load_weights(self, weights, _orig=orig):
-            keep = ((n, w) for n, w in weights if not ("lm_head" in n or n.endswith("unembed.weight")))
-            return _orig(self, keep)
+            def load_weights(self, weights, _orig=orig):
+                keep = ((n, w) for n, w in weights if not ("lm_head" in n or n.endswith("unembed.weight")))
+                return _orig(self, keep)
 
-        cls.load_weights, cls._clm_patched = load_weights, True
+            cls.load_weights, cls._clm_patched = load_weights, True
+            names.append(cls.__name__)
     print("patched lm_head skip for", names, flush=True)
 
 
