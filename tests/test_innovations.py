@@ -72,3 +72,20 @@ def test_choice_with_replay(tmp_path):
                     "--choice-eval", croot, "--out", str(tmp_path / "run"), "--width", "32", "--proj", "16", "--steps", "20",
                     "--batch", "64", "--eval-every", "20", "--lr", "0.01"])
     assert "choice_banking77" in r and "choice_arc" in r
+
+
+def test_choice_shards_never_default_training(tmp_path):
+    from innovations import data
+    root = make_root(tmp_path / "r", [("shard_00", 0), ("shard_10", 0), ("shard_11", 0), ("shard_00", 28)])
+    assert data.training_chunks(root) == [("shard_00", 0)]
+
+
+def test_labeled_split_is_question_disjoint(tmp_path):
+    import random
+    from innovations import build_choice_data as b
+    mc = [b.mcq(f"Question {i}?", ["x", "y", "z"], i % 3, "arc", "train") for i in range(2000)]
+    lab = b.labeled(mc, random.Random(0), 2000)
+    test_q = {b.question_of(r) for r in lab if r["split"] == "test"}
+    kept = [r for r in mc if not b.labeled_test(b.question_of(r))]
+    assert test_q and not test_q & {b.question_of(r) for r in kept}
+    assert all(": " in o for r in lab for o in r["options"])

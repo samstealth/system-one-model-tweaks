@@ -115,6 +115,14 @@ ASKS = ["Pick the {pos} option.", "Choose the option marked {pos}.", "Which opti
         "Select the {pos} choice and avoid anything {neg}."]
 
 
+def question_of(r):
+    return r["state"].split("\n\n")[0]
+
+
+def labeled_test(question):
+    return zlib.crc32(question.encode()) % 100 < 3
+
+
 def labeled(mcq_rows, rng, n):
     """Re-use MCQ option texts but put the answer in an inline label, so the decision depends on reading it."""
     out = []
@@ -126,8 +134,8 @@ def labeled(mcq_rows, rng, n):
             key, body = o.split(": ", 1)
             tag = pos if i == g else neg
             opts.append(f"{key}: {tag}. {body}" if rng.random() < 0.5 else f"{key}: {body}. {tag}.")
-        ctx = r["state"].split("\n\n")[0]
-        split = "test" if zlib.crc32(ctx.encode()) % 100 < 3 else "train"
+        ctx = question_of(r)
+        split = "test" if labeled_test(ctx) else "train"
         out.append({"source": "labeled", "split": split,
                     "state": f"{ctx}\n\n{rng.choice(ASKS).format(pos=pos.lower(), neg=neg.lower())}",
                     "options": opts, "gold": g})
@@ -170,7 +178,9 @@ def main(argv=None):
     for r in pq.read_table(S("mmlu_aux.parquet")).column("train").to_pylist():
         r = r if isinstance(r, dict) else ast.literal_eval(r)
         mc.append(mcq(r["question"], r["choices"], int(r["answer"]), "mmlu_aux", "train"))
-    rows += mc
+    # Questions whose hash puts them in the labeled test split are kept out of training entirely,
+    # so choice_labeled measures label reading, not memorized question text.
+    rows += [r for r in mc if r["split"] == "test" or not labeled_test(question_of(r))]
     rows += glaive(S("glaiveai_glaive-function-calling-v2__glaive-function-calling-v2.json"), rng, a.glaive)
     rows += labeled([r for r in mc if r["split"] == "train"], rng, a.labeled)
 

@@ -15,6 +15,7 @@ import numpy as np
 
 HOLD_GEN = [("shard_05", 83), ("shard_05", 84)]
 HOLD_HN = [("shard_00", 28), ("shard_00", 29)]
+CHOICE_TRAIN, CHOICE_TEST = "shard_10", "shard_11"  # written by modal_embed.py --job choice
 
 
 def stem(root, c, kind="qa"):
@@ -47,8 +48,10 @@ def load_chunk(root, c, negs=False, limit=None):
 
 
 def training_chunks(root):
+    """Default Q&A training chunks: never the held-out tests, and never the choice shards
+    (pass those explicitly with --chunks shard_10/N so choice data is only used on purpose)."""
     held = set(HOLD_GEN) | set(HOLD_HN)
-    return [c for c in available(root) if c not in held]
+    return [c for c in available(root) if c not in held and c[0] not in (CHOICE_TRAIN, CHOICE_TEST)]
 
 
 def batches(chunks, root, batch, seed=0, negs=False, limit=None):

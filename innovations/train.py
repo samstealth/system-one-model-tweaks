@@ -60,13 +60,14 @@ def mixed(main_it, replay_it, frac, batch):
         yield out
 
 
-def choice_scores(model, chunks, root, dev):
-    """Listwise top-1 per source on the held-out decision sets (banking77, clinc, ARC, tools, ...)."""
-    if not chunks:
+def choice_scores(model, root, dev):
+    """Listwise top-1 per source on the held-out decision sets (banking77, clinc, ARC, tools, ...).
+    Chunks are memory-mapped and read lazily at each eval, so nothing large stays resident."""
+    if not root:
         return {}
     import pyarrow.parquet as pq
     out = {}
-    for c in [c for c in data.available(root) if c[0] == "shard_11"]:
+    for c in [c for c in data.available(root) if c[0] == data.CHOICE_TEST]:
         src = np.array(pq.read_table(data.stem(root, c) + "_meta.parquet", columns=["source"]).column("source").to_pylist())
         d = data.load_chunk(root, c, negs=True)
         for s in sorted(set(src)):
@@ -110,7 +111,12 @@ def main(argv=None):
     torch.manual_seed(a.seed)
     os.makedirs(a.out, exist_ok=True)
     mrl = tuple(int(x) for x in a.matryoshka.split(",") if x)
-    first = data.load_chunk(a.root, (chunks_arg(a.chunks) or data.training_chunks(a.root))[0])
+    chunks = chunks_arg(a.chunks) or data.training_chunks(a.root)
+    if not chunks:
+        p.error(f"no training chunks under {a.root}/qa (choice shards need --chunks shard_10/N)")
+    if any(c[0] == data.CHOICE_TEST for c in chunks):
+        p.error("shard_11 is the choice test split; do not train on it")
+    first = data.load_chunk(a.root, chunks[0])
     in_dim = first["q"].shape[1]
     cfg = HeadConfig(in_dim=in_dim, width=a.width, depth=a.depth, proj=a.proj, tower=a.tower, adapter_rank=a.adapter_rank, matryoshka=mrl)
     if a.init:
@@ -122,7 +128,6 @@ def main(argv=None):
     lr = a.lr or 2e-3 * math.sqrt(1024 / a.width) * math.sqrt(a.batch / 1024)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)
 
-    chunks = chunks_arg(a.chunks) or data.training_chunks(a.root)
     g, h = build_eval(a.root, a.gen_limit, a.hn_limit)
     dims = mrl or (None,)
     meta = {"cfg": model.cfg.to_dict(), "params": model.n_params(), "lr": lr, "batch": a.batch, "chunks": len(chunks),
@@ -134,10 +139,9 @@ def main(argv=None):
     it = data.batches(chunks, a.root, a.batch, a.seed, negs=a.hard_negs)
     if a.replay_frac > 0:
         rch = chunks_arg(a.replay_chunks) or data.training_chunks(a.replay_root)
+        if not a.replay_root or not rch:
+            p.error("--replay-frac > 0 needs --replay-root (and optionally --replay-chunks) with Q&A chunks")
         it = mixed(it, data.batches(rch, a.replay_root, a.batch, a.seed + 1, negs=a.replay_negs), a.replay_frac, a.batch)
-    ch_eval = []
-    if a.choice_eval:
-        ch_eval = [data.load_chunk(a.choice_eval, c, negs=True) for c in data.available(a.choice_eval) if c[0] == "shard_11"]
     for step in range(1, a.steps + 1):
         b = next(it)
         n = T(b["n"]) if "n" in b else None
@@ -151,7 +155,7 @@ def main(argv=None):
             print(f"step {step} loss {loss.item():.4f} scale {model.scale().item():.1f} {(time.time()-t0)/60:.1f} min", flush=True)
         if step % a.eval_every == 0 or step == a.steps:
             m = {"step": step, "loss": round(loss.item(), 4), "minutes": round((time.time() - t0) / 60, 2),
-                 **score(model, g, h, dev, dims), **choice_scores(model, ch_eval, a.choice_eval, dev)}
+                 **score(model, g, h, dev, dims), **choice_scores(model, a.choice_eval, dev)}
             print(json.dumps(m), flush=True)
             log.write(json.dumps(m) + "\n"); log.flush()
     model.save(os.path.join(a.out, "final.pt"), meta=meta)
