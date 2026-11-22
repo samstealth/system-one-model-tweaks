@@ -202,6 +202,9 @@ def run_job(job, backbone, src, chunk=100000, engine="vllm", state_format="{cont
         for split, shard in (("train", "shard_10"), ("test", "shard_11")):
             rows = [json.loads(l) for l in open(f"{src}/choice_{split}.jsonl")]
             for c, i in enumerate(range(0, len(rows), chunk)):
+                if os.path.exists(f"{root}/neg/{shard}/chunk_{c:04d}_ncnt.npy"):  # written last by _save: resume
+                    print(split, c, "already saved, skipping", flush=True)
+                    continue
                 part = rows[i:i + chunk]
                 q = emb([r["state"] for r in part], "tail")
                 a = emb([r["options"][r["gold"]] for r in part])
