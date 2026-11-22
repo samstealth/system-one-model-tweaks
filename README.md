@@ -1,4 +1,6 @@
-# System One Model from Scratch
+# System One Model from Scratch, plus innovations
+
+> This fork adds [`innovations/`](innovations/README.md): a backbone swap to Inkling 2 Mini or Muse Glimmer, an embedding-dimension sweep, quantization, a shared embedding space, and a listwise post-training recipe. The rest of this README is the original baseline.
 
 A rebuild of [CLM-8B](https://contrastive-lm.notion.site), an open System One model from Stanford and NVIDIA Research, made for a live workshop by [Dr. Raj Dandekar](https://vizuara.ai) and the team at Vizuara AI Labs.
 
