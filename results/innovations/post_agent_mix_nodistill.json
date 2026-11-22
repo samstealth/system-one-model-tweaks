@@ -1,0 +1,31 @@
+{
+ "cfg": {
+  "in_dim": 4096,
+  "width": 1536,
+  "depth": 3,
+  "proj": 512,
+  "tower": "separate",
+  "adapter_rank": 64,
+  "matryoshka": []
+ },
+ "params": 18887680,
+ "lr": 0.0003,
+ "batch": 4096,
+ "chunks": 5,
+ "device": "cuda",
+ "hard_negs": true,
+ "step": 400,
+ "loss": 3.1751,
+ "minutes": 3.07,
+ "gen_loss": 0.7514,
+ "gen_top1": 0.8026,
+ "tricky_top1": 0.6854,
+ "tricky_n": 7848,
+ "choice_arc": 0.4036,
+ "choice_banking77": 0.786,
+ "choice_clinc_oos": 0.8365,
+ "choice_csqa": 0.4488,
+ "choice_glaive_fc": 0.9708,
+ "choice_labeled": 0.4776,
+ "head_latency_ms_cpu_1000_actions": 0.273
+}
