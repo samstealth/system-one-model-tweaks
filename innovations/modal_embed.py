@@ -23,6 +23,7 @@ Backbones (verify ids on the Hub before a long run; they were checked on 22 Nov 
     modal run --detach modal_embed.py --job choice --backbone qwen3-8b
     modal run modal_embed.py --job latency --backbone qwen3-8b,qwen3-8b-fp8,qwen3-8b-awq
     modal run modal_embed.py --job heads      # the authors' heads into /data/heads
+    modal run modal_embed.py --job published --chunks 0,1   # published vectors + hard negatives, for replay
 """
 import json
 import os
@@ -224,10 +225,36 @@ def fetch_heads():
     return sorted(os.listdir("/data/heads"))
 
 
+@app.function(image=image, volumes={"/data": vol}, timeout=3600, cpu=4, memory=16384)
+def fetch_published(chunks=(0,)):
+    """Published Qwen3-8B Q&A vectors plus their hard negatives for a few shard_00 chunks, in the
+    layout train.py reads (/data/qa, /data/neg). About 10 GB per chunk. Used as post-training replay
+    WITH hard negatives: the baseline found plain replay drops tricky Q&A (59.8% vs 69.0%)."""
+    import shutil
+    from huggingface_hub import hf_hub_download
+    qa = ("Contrastive-LM/CLM-v0.1-Pretrain-Nemotron", "05ca7d05c043350326c5e86c589b9542962747b4")
+    neg = ("jackyk02/nemotron_dqa_qwen3_8b_neg_embeddings", None)
+    got = []
+    for c in chunks:
+        for (repo, rev), kind, suffixes in ((qa, "qa", ("q.npy", "a.npy", "meta.parquet")), (neg, "neg", ("n.npy", "ncnt.npy"))):
+            for suf in suffixes:
+                f = f"shard_00/chunk_{int(c):04d}_{suf}"
+                dst = f"/data/{kind}/{f}"
+                if not os.path.exists(dst):
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    shutil.copyfile(hf_hub_download(repo, f, repo_type="dataset", revision=rev), dst)
+                got.append(dst)
+        vol.commit()
+    return got
+
+
 @app.local_entrypoint()
-def main(job: str = "qa", backbone: str = "qwen3-8b", src: str = "", engine: str = "vllm"):
+def main(job: str = "qa", backbone: str = "qwen3-8b", src: str = "", engine: str = "vllm", chunks: str = "0"):
     if job == "heads":
         print(fetch_heads.remote())
+        return
+    if job == "published":
+        print(fetch_published.remote([int(c) for c in chunks.split(",")]))
         return
     if job == "latency":
         out = {}
