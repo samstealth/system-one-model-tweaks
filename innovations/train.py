@@ -92,6 +92,8 @@ def main(argv=None):
     p.add_argument("--steps", type=int, default=2000)
     p.add_argument("--eval-every", type=int, default=500)
     p.add_argument("--hard-negs", action="store_true", help="mid-training style: add each pair's hard negatives")
+    p.add_argument("--hard-neg-weight", type=float, default=1.0,
+                   help="weight on hard-negative logits (added as log w); the neg-embeddings card reports 2.0 as best")
     p.add_argument("--chunks", default="", help="comma list like shard_05/0,shard_05/1 (default: all non-held-out)")
     p.add_argument("--init", default="", help="TwoTower .pt or the authors' head .pt (separate tower only)")
     p.add_argument("--gen-limit", type=int, default=20480)
@@ -150,7 +152,7 @@ def main(argv=None):
         b = next(it)
         n = T(b["n"]) if "n" in b else None
         c = torch.from_numpy(b["c"].astype(np.int64)).to(dev) if "n" in b else None
-        loss = model_loss(model, T(b["q"]), T(b["a"]), torch.from_numpy(b["doc"]).to(dev), n, c)
+        loss = model_loss(model, T(b["q"]), T(b["a"]), torch.from_numpy(b["doc"]).to(dev), n, c, a.hard_neg_weight)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

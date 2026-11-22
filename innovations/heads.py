@@ -167,7 +167,7 @@ def info_nce(zq, za, scale, doc=None, zn=None, ncnt=None, neg_weight=1.0):
     return (forw + back) / 2
 
 
-def model_loss(model, q, a, doc=None, n=None, ncnt=None):
+def model_loss(model, q, a, doc=None, n=None, ncnt=None, neg_weight=1.0):
     """Loss for a batch of raw backbone vectors. With matryoshka dims, the loss is averaged over prefixes."""
     dims = model.cfg.matryoshka or (None,)
     s = model.scale()
@@ -181,5 +181,5 @@ def model_loss(model, q, a, doc=None, n=None, ncnt=None):
         cut = (lambda z: z[..., :d]) if d else (lambda z: z)
         zq, za = F.normalize(cut(zs_full), dim=-1), F.normalize(cut(za_full), dim=-1)
         zn = F.normalize(cut(zn_full), dim=-1) if zn_full is not None else None
-        total = total + info_nce(zq, za, s, doc, zn, ncnt)
+        total = total + info_nce(zq, za, s, doc, zn, ncnt, neg_weight)
     return total / len(dims)
