@@ -110,5 +110,36 @@ post-trained head, on Qwen3-8B vectors:
 - Replay without hard negatives cost 5.3 points tricky; with them it gains 2.6. That matches the baseline's own lesson.
 - The choice gains are in-distribution (test rows come from the training sources).
 - **T-Rex is lost.** The authors' mid head also survives 0/5, so T-Rex skill comes only from their agent
-  post-training. All our variants wash it out, including a gentle run starting from their post head.
-  Next step: put agent trajectories (ADP) into the post-training mix.
+  post-training. All these variants wash it out, including a gentle run starting from their post head.
+  Section 6 fixes this.
+
+## 6. Keeping T-Rex: the best head so far
+
+Full table, every attempt and costs: `results/innovations/day2_2026-11-22.md`.
+
+**`wise_0.15`** is a weight blend with no extra training: 85% the authors' post head and 15%
+`post_choice_hn_frompost` (`python -m innovations.interpolate --alpha 0.15`). Compared with the authors' post head:
+
+| Test | CLM post head | Ours (`wise_0.15`) |
+|---|---|---|
+| **T-Rex, shield on** (5 seeds: survived, deaths, score) | 5/5, 0, 697 | **5/5, 0, 697** |
+| T-Rex, shield off (deaths, score) | **22, 221** | 45, 55 |
+| Tricky Q&A | 66.1% | **66.6%** |
+| General Q&A | 81.8% | 81.7% |
+| Tool choice (Glaive) | 56.0% | **71.7%** |
+| Ticket routing (Banking77) | 22.1% | **26.9%** |
+| Intent routing (CLINC) | 29.0% | **37.4%** |
+| Label reading | 32.9% | **35.3%** |
+| ARC / CommonsenseQA | 30.6% / 30.7% | **33.0% / 33.6%** |
+| DeepSWE (38 tasks, seed 1234) | 31/38 | 30/38 |
+
+- It ties CLM on T-Rex with the shield on (the published setting) and wins every listwise test and tricky
+  Q&A. General Q&A is 0.1 points lower. DeepSWE is one task lower, inside the authors' own 29 to 32 seed range.
+- Not yet a clean win: with the shield off CLM still plays T-Rex far better, and the choice gains are in-distribution.
+- What failed: blending in more of our head (0.25: 4/5, 0.5: 0/5); distillation to the post head (0/5);
+  distillation with a strong L2 anchor (5/5 but no gains at all); our ADP agent-data mix, 118k steps from
+  34 configs (2/5 with distillation, 0/5 without). The authors' T-Rex skill sits in a small, fragile
+  weight change that only a light blend preserves.
+- Next, all cheap: blends between 0.15 and 0.25, DeepSWE over 5 seeds, and a choice test from held-out sources.
+
+Total Modal spend for both days: $63.15 (`modal billing summary`).
