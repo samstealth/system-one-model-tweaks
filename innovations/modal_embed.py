@@ -251,10 +251,40 @@ def fetch_published(chunks=(0,)):
     return got
 
 
+@app.function(image=image, volumes={"/data": vol}, timeout=3600, cpu=4, memory=65536)
+def agent_chunks(src="/data/agent/vec", root="/data/emb/qwen3-8b", shard="shard_20", chunk=100000, seed=0):
+    """Agent (state, action) vectors from pipeline/embed_agent.py -> trainer chunks <root>/qa/<shard>/.
+    Train-split rows only, shuffled across configs. doc_id is config:recording, so other steps of the
+    same recording are masked as false negatives. No neg/ files: these rows train with in-batch negatives."""
+    import glob
+    import numpy as np, pyarrow as pa, pyarrow.parquet as pq
+    vol.reload()
+    qs, as_, docs, steps = [], [], [], []
+    for m in sorted(glob.glob(f"{src}/*_meta.parquet")):
+        base = m[: -len("_meta.parquet")]
+        t = pq.read_table(m).to_pydict()
+        keep = np.array([s == "train" for s in t["split"]])
+        if not keep.any():
+            continue
+        qs.append(np.load(base + "_q.npy")[keep]); as_.append(np.load(base + "_a.npy")[keep])
+        docs += [f"{c}:{r}" for c, r, k in zip(t["config"], t["traj"], keep) if k]
+        steps += [int(s) for s, k in zip(t["step"], keep) if k]
+    q, a = np.concatenate(qs), np.concatenate(as_)
+    idx = np.random.default_rng(seed).permutation(len(q))
+    for c, i in enumerate(range(0, len(idx), chunk)):
+        b = np.sort(idx[i:i + chunk])
+        _save(root, shard, c, q[b], a[b], {"doc_id": [docs[j] for j in b], "pair_idx": [steps[j] for j in b]})
+    vol.commit()
+    return {"pairs": int(len(q)), "chunks": (len(idx) + chunk - 1) // chunk, "configs": len(qs), "dst": f"{root}/qa/{shard}"}
+
+
 @app.local_entrypoint()
 def main(job: str = "qa", backbone: str = "qwen3-8b", src: str = "", engine: str = "vllm", chunks: str = "0"):
     if job == "heads":
         print(fetch_heads.remote())
+        return
+    if job == "agent":  # src defaults to /data/agent/vec; pass --src /data/agent/vec_N for a slice
+        print(agent_chunks.remote(src or "/data/agent/vec"))
         return
     if job == "published":
         print(fetch_published.remote([int(c) for c in chunks.split(",")]))

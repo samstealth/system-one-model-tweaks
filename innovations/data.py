@@ -39,7 +39,7 @@ def load_chunk(root, c, negs=False, limit=None):
     d = {"q": np.load(stem(root, c) + "_q.npy", mmap_mode="r"),
          "a": np.load(stem(root, c) + "_a.npy", mmap_mode="r"),
          "doc": doc_ids(root, c)}
-    if negs:
+    if negs and os.path.exists(stem(root, c, "neg") + "_n.npy"):  # chunks without negatives (agent pairs) train in-batch only
         d["n"] = np.load(stem(root, c, "neg") + "_n.npy", mmap_mode="r")
         d["c"] = np.load(stem(root, c, "neg") + "_ncnt.npy")
     if limit:

@@ -11,9 +11,12 @@ import time
 
 import modal
 
+# CLM_AGENT_LIMIT=N embeds only the first N pairs of each config, into /data/agent/vec_N (a cheap slice).
+LIMIT = int(os.environ.get("CLM_AGENT_LIMIT", "0"))
+VEC = f"/data/agent/vec_{LIMIT}" if LIMIT else "/data/agent/vec"
 image = (modal.Image.debian_slim(python_version="3.11")
          .pip_install("vllm==0.11.0", "transformers>=4.56,<5", "pyarrow==18.1.0", "huggingface_hub")
-         .env({"HF_HOME": "/data/hf"}))
+         .env({"HF_HOME": "/data/hf", "CLM_AGENT_LIMIT": str(LIMIT)}))
 vol = modal.Volume.from_name("clm-data", create_if_missing=True, version=2)
 app = modal.App("clm-embed-agent")
 REV = "b968826d9c46dd6066d109eabc6255188de91218"
@@ -62,17 +65,19 @@ class Embedder:
     def run(self, path):
         import numpy as np, pyarrow as pa, pyarrow.parquet as pq
         name = os.path.basename(path)[:-8]
-        out = f"/data/agent/vec/{name}"
+        out = f"{VEC}/{name}"
         vol.reload()
         if os.path.exists(out + "_meta.parquet"):
             return name, 0, 0.0
         t0 = time.time()
         tab = pq.read_table(path)
+        if LIMIT:
+            tab = tab.slice(0, LIMIT)
         st = [self.state_ids(s) for s in tab.column("state").to_pylist()]
         ac = [self.tok(a or " ", add_special_tokens=False)["input_ids"][:CAP] or [220] for a in tab.column("action").to_pylist()]
         t1 = time.time()
         q, a = self.embed(st), self.embed(ac)
-        os.makedirs("/data/agent/vec", exist_ok=True)
+        os.makedirs(VEC, exist_ok=True)
         np.save(out + "_q.npy", q); np.save(out + "_a.npy", a)
         pq.write_table(tab.select(["config", "traj", "step", "split"]), out + "_meta.parquet")
         vol.commit()
