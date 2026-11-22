@@ -37,6 +37,7 @@ BACKBONES = {
     "qwen3-4b": dict(repo="Qwen/Qwen3-4B"),
     # Released after vllm 0.11 / transformers 4.x: run these with CLM_NEW_STACK=1 (unpinned vllm and
     # transformers) and, if vLLM's pooling runner rejects the architecture, --engine hf.
+    # needs vLLM >= 0.35 (unreleased on 22 Nov 2026): run with CLM_IMAGE=vllm/vllm-openai:inkling-2-mini
     "inkling-2-mini": dict(repo="thinkingmachines/Inkling-2-Mini", hidden=2304, new=True),   # Inkling2LoopForConditionalGeneration
     "muse-glimmer-30b": dict(repo="meta-models/Muse-Glimmer-30B", hidden=6656, new=True),    # MuseGlimmerForConditionalGeneration
 }
@@ -44,9 +45,15 @@ CAP = 2047  # token cap per side, the repo's serving default
 
 STACK = (["vllm", "transformers", "accelerate"] if os.environ.get("CLM_NEW_STACK") == "1"
          else ["vllm==0.11.0", "transformers>=4.56,<5"])  # the pinned stack is the one the repo verified for Qwen3
-image = (modal.Image.debian_slim(python_version="3.11")
-         .pip_install(*STACK, "pyarrow==18.1.0", "numpy", "huggingface_hub", "hf_transfer")
-         .env({"HF_HOME": "/data/hf", "HF_HUB_ENABLE_HF_TRANSFER": "1"}))
+if os.environ.get("CLM_IMAGE"):  # e.g. vllm/vllm-openai:inkling-2-mini, for archs no vLLM release supports yet
+    image = (modal.Image.from_registry(os.environ["CLM_IMAGE"]).entrypoint([])
+             .run_commands("ln -sf $(command -v python3) /usr/local/bin/python")  # the image ships python3 only
+             .pip_install("pyarrow", "hf_transfer")  # image python may be newer than pyarrow 18 wheels
+             .env({"HF_HOME": "/data/hf", "HF_HUB_ENABLE_HF_TRANSFER": "1"}))
+else:
+    image = (modal.Image.debian_slim(python_version="3.11")
+             .pip_install(*STACK, "pyarrow==18.1.0", "numpy", "huggingface_hub", "hf_transfer")
+             .env({"HF_HOME": "/data/hf", "HF_HUB_ENABLE_HF_TRANSFER": "1"}))
 vol = modal.Volume.from_name("clm-data", create_if_missing=True, version=2)
 app = modal.App("clm-innovations-embed")
 
