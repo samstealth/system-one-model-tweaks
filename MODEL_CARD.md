@@ -225,10 +225,11 @@ from clm import CLMClient, Choice
 
 client = CLMClient()                          # http://127.0.0.1:8700 by default
 r = client.system_one(
-    state="User request: Our nightly export job failed with 'disk quota exceeded'. Find out which table grew the most.",
+    state="User request: The checkout page has been down for 20 minutes and I cannot fix it myself. Get the on-call engineer to look at it.",
     questions={"tool": Choice(
         instructions="Which tool should the agent call next?",
-        criteria={"run_sql_query": "run_sql_query: Run a read-only SQL query against the staging database.",
+        criteria={"create_ticket": "create_ticket: Open a ticket for the on-call engineer with a title and a description.",
+                  "restart_service": "restart_service: Restart a named service on the staging cluster.",
                   "search_logs": "search_logs: Search application and job logs by time range and keyword.",
                   "no_tool": "no_tool: Answer directly without calling a tool."})},
 )

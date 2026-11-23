@@ -9,7 +9,7 @@ published recipe, then scores them with a head:
   score     softmax over the options of  scale * cosine(state_head(state), action_head(option))
 
     pip install "transformers>=4.51" accelerate
-    python examples/route_text.py                      # built-in example: an agent choosing a tool
+    python examples/route_text.py                      # built-in example: an agent choosing a tool (all heads pick create_ticket)
     python examples/route_text.py --head clm           # CLM's official head only
     python examples/route_text.py --state "Customer: my invoice was charged twice." \\
         --instructions "Which team should handle this?" \\
@@ -44,9 +44,11 @@ DEFAULT_BACKBONE = "Qwen/Qwen3-8B"
 CAP = 2047  # tokens per text, the serving default (vLLM --max-model-len 2048)
 
 # A realistic decision: the agent has one request and a handful of tools, and must pick one.
+# Measured on one L40S with Qwen/Qwen3-8B in bf16 (23 Nov 2026): every head picks create_ticket,
+# with probability 0.72 (CLM-8B), 0.82 (S1-Tweaks v0.1) and 0.96 (S1-Router v0.1).
 EXAMPLE = {
-    "state": ("User request: Our nightly export job failed at 02:14 with 'disk quota exceeded' on the staging "
-              "database. Find out which table grew the most since yesterday."),
+    "state": ("User request: The checkout page has been down for 20 minutes and I cannot fix it myself. "
+              "Get the on-call engineer to look at it."),
     "instructions": "Which tool should the agent call next?",
     "options": {
         "run_sql_query": "Run a read-only SQL query against the staging database and return the rows.",
@@ -126,10 +128,10 @@ def random_head(in_dim, seed=0):
 
 
 def load_heads(specs, in_dim):
-    """--head values to Scorers. With no --head, try CLM's head and S1-Tweaks v0.1 and keep what loads."""
+    """--head values to Scorers. With no --head, try CLM's head and this repo's two heads and keep what loads."""
     explicit = bool(specs)
     heads = []
-    for spec in specs or ["clm", "s1-tweaks"]:
+    for spec in specs or ["clm", "s1-tweaks", "s1-router"]:
         if spec == "random":
             heads.append(random_head(in_dim))
             continue
@@ -167,8 +169,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="Embed a state and options with Qwen3-8B, then score the options with a System One head.")
     p.add_argument("--backbone", default=DEFAULT_BACKBONE, help="Hugging Face id or local path of the backbone (default Qwen/Qwen3-8B)")
     p.add_argument("--head", action="append", default=None,
-                   help='"s1-tweaks", "clm", a local .pt file, an https URL, hf://org/repo/file.pt, or "random" (smoke test). '
-                        "Repeat to compare heads. Default: clm and s1-tweaks, whichever can be loaded.")
+                   help='"clm", "s1-tweaks", "s1-router", a local .pt file, an https URL, hf://org/repo/file.pt, or "random" '
+                        "(smoke test). Repeat to compare heads. Default: clm, s1-tweaks and s1-router, whichever can be loaded.")
     p.add_argument("--device", default=None, help="cuda, cuda:0 or cpu (default: cuda)")
     p.add_argument("--state", default=None, help="the situation, as plain text")
     p.add_argument("--instructions", default=None, help="the question asked about the state")
