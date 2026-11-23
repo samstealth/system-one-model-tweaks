@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: A problem with the CLM engine, clm-serve or the official CLM weights
+    url: https://github.com/Contrastive-LM/CLM/issues
+    about: This repo only adds heads and experiments. Engine and upstream weight issues belong with the CLM authors.
+  - name: How to rerun an experiment
+    url: https://github.com/samstealth/system-one-model-tweaks/blob/HEAD/docs/REPRODUCE.md
+    about: Commands, hardware and cost for every result in this repo.
+  - name: Every measured number, with its limits
+    url: https://github.com/samstealth/system-one-model-tweaks/blob/HEAD/innovations/RESULTS.md
+    about: Check here before reporting a number that looks wrong.

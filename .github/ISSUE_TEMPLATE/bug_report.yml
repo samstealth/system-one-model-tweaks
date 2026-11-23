@@ -1,0 +1,74 @@
+name: Bug report
+description: Something in this repo crashes or gives a wrong answer.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. A report we can rerun gets fixed fastest.
+        If a published number looks wrong, use the "Result replication" template instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, what you expected and what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: The full command line, copied from your shell.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output or traceback
+      description: The last lines are usually enough. Remove tokens and keys first.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it happens
+      options:
+        - examples/demo_cpu.py (no-GPU demo)
+        - examples/route_text.py (text in, GPU)
+        - innovations/scorer.py or loading a head
+        - Serving a released head with the CLM engine (clm-serve --ckpt)
+        - innovations/train.py or another CPU script
+        - Modal GPU jobs (innovations/modal_*.py, pipeline/)
+        - scripts/make_figures.py
+        - Tests
+        - Docs
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, torch version, and the GPU if one is involved.
+      placeholder: |
+        Ubuntu 24.04, Python 3.11
+        python -c "import torch, numpy; print(torch.__version__, numpy.__version__)"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I ran `python -m pytest -q tests` and included the result if it fails.
+        - label: I searched the open issues for the same problem.

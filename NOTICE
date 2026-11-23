@@ -1,0 +1,108 @@
+System One Model Tweaks
+Copyright 2026 samstealth and contributors
+
+This project is licensed under the Apache License, Version 2.0. See the LICENSE file.
+It contains, or is derived from, the works listed below.
+
+
+1. Vizuara AI Labs: System One Model from Scratch
+-------------------------------------------------
+
+Source:   https://github.com/VizuaraAI/system-one-from-scratch
+Licence:  Apache License, Version 2.0
+By:       Vizuara AI Labs
+
+Imported from that repository:
+  - pipeline/ (data staging, the baseline trainer, agent data, embedding, testing, game rendering)
+  - site/ (the workshop deck)
+  - the baseline result files in results/: results.json, scores_post2.json, pre_log.jsonl,
+    mid_log.jsonl, post_log.jsonl
+  - the baseline README, which now lives at docs/BASELINE.md
+
+Changes made here to the imported files:
+  - pipeline/run_trex.py: downloads the pinned Qwen3-8B encoder to the Modal volume when it is
+    missing. A --shield-only option skips the pass with the safety shield off. Without that
+    option, the shield-off pass now runs for every model.
+  - pipeline/embed_agent.py: the CLM_AGENT_LIMIT setting embeds only the first N pairs of each
+    config, into its own folder.
+  - The baseline README was moved to docs/BASELINE.md. Edits to it are in the git history.
+
+Added in this repository: everything in innovations/, examples/, scripts/, tests/, assets/,
+.github/ and results/innovations/, plus the top-level README.md, MODEL_CARD.md and
+docs/REPRODUCE.md.
+
+
+2. CLM-v0.1-8B (Contrastive Language Models)
+--------------------------------------------
+
+Weights:  https://huggingface.co/Contrastive-LM/CLM-v0.1-8B  (file CLM_v0.1-8B.pt)
+Code:     https://github.com/Contrastive-LM/CLM
+Licence:  Apache License, Version 2.0, for the code and for the weights
+By:       Jacky Kwok, Hangoo Kang, Tarun Suresh, Jon Saad-Falcon, Marco Pavone, Christopher Ré
+          and Azalia Mirhoseini
+Cite:     "Contrastive Language Models", 2026, https://contrastive-lm.notion.site
+
+This repository releases two head files on its release page. Both are modified copies of the
+CLM-v0.1-8B weights. What was changed:
+
+  S1-Router v0.1  (file s1_router_v0.1.pt, internal run name post_choice_hn_frompost)
+    The CLM-v0.1-8B head after further post-training: 400 training steps on listwise choice
+    data, where the other options of the same question are the hard negatives. 40% of every
+    batch is replay of CLM's published Q&A vectors with their hard negatives.
+
+  S1-Tweaks v0.1  (file s1_tweaks_v0.1.pt, internal run name wise_0.15)
+    Weight interpolation with no further training. Every weight tensor of the state head and
+    of the action head, and the logit_scale value, is
+        0.85 * CLM-v0.1-8B + 0.15 * S1-Router v0.1
+    (python -m innovations.interpolate --alpha 0.15).
+
+Nothing else was changed. The architecture and the checkpoint layout (state_head, action_head,
+logit_scale, cfg) are CLM's.
+
+Neither file is an official CLM release. The CLM authors have not reviewed or endorsed them.
+
+No CLM weight file is stored in this repository. The code downloads the official file from
+Hugging Face when it is needed. pipeline/run_trex.py and pipeline/run_deepswe.py clone the CLM
+code at a pinned commit when they run.
+
+
+3. Used but not included
+------------------------
+
+  - Qwen/Qwen3-8B, the frozen backbone. It is not redistributed here. Its model card lists
+    Apache 2.0.
+  - The published CLM vectors (Contrastive-LM/CLM-v0.1-Pretrain-Nemotron) and hard negatives
+    (jackyk02/nemotron_dqa_qwen3_8b_neg_embeddings). They are not redistributed here. The
+    Nemotron-derived data is under the NVIDIA Open Data License.
+  - The datasets behind the choice training data: PolyAI/banking77, clinc/clinc_oos,
+    glaiveai/glaive-function-calling-v2, allenai/ai2_arc, tau/commonsense_qa and cais/mmlu.
+    The agent mix used neulab/adp-v2.
+  - The datasets behind the held-out choice test: gorilla-llm/Berkeley-Function-Calling-Leaderboard,
+    mteb/amazon_massive_intent, DeepPavlov/hwu64,
+    bitext/Bitext-customer-support-llm-chatbot-training-dataset, allenai/sciq, allenai/qasc,
+    cais/mmlu and openlifescienceai/medmcqa.
+
+Each dataset keeps its own licence. See its dataset card before you reuse it. Some of them do
+not allow commercial use.
+
+
+4. Sample data in examples/data/
+--------------------------------
+
+sample_decisions.npz and sample_decisions.jsonl hold 60 decisions together with their Qwen3-8B
+vectors, for the no-GPU demo. Each row names its source in its "source" field. The rows stay
+under the licence of the dataset they come from. Licences as listed on each dataset card on
+Hugging Face, read on 23 November 2026:
+
+  source field      dataset                                             licence on the card
+  glaive_fc         glaiveai/glaive-function-calling-v2                 Apache 2.0
+  banking77         PolyAI/banking77                                    CC BY 4.0
+  clinc_oos         clinc/clinc_oos                                     CC BY 3.0
+  heldout_bfcl      gorilla-llm/Berkeley-Function-Calling-Leaderboard   Apache 2.0
+  heldout_massive   mteb/amazon_massive_intent                          Apache 2.0
+
+The mteb/amazon_massive_intent card lists Apache 2.0. The card of the original dataset,
+AmazonScience/massive, lists CC BY 4.0.
+
+The state and option texts in the sample were rewritten into this repository's templates by
+innovations/build_choice_data.py and innovations/build_heldout_choice.py.

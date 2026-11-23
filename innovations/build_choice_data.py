@@ -1,8 +1,13 @@
-"""Innovation 5: listwise post-training data in the exact format the CLM engine serves.
+"""Innovation 5: listwise post-training data, laid out the way the CLM engine scores a choice question.
 
-Why: at serving time the engine embeds  state = f"{state}\\n\\n{instructions}"  and every option as
-f"{key}: {description}" (CLM src/clm/schema.py), then softmaxes over a handful of options from the
-SAME question. Our reconstructed post-training (pipeline/build_agent_data.py) only ever saw one
+Why: at serving time the engine embeds  state = f"{state}\\n\\n{instructions}"  and sends each
+option's description to the encoder exactly as the caller wrote it, with no key prefix
+(CLM src/clm/schema.py), then softmaxes over a handful of options from the SAME question.
+This builder writes every option as f"{name}: {description}". That prefix is this dataset's own
+convention, not the engine's. So when a head trained on these rows is served through the engine,
+put "name: description" in the option's description.
+
+Our reconstructed post-training (pipeline/build_agent_data.py) only ever saw one
 agent action per state with random in-batch negatives, so the head never learned to separate
 sibling options of one question. That matches the failure we see: Q&A holds at 69% but T-Rex
 label reading collapses (10% planner agreement against 66.8% for the authors' head).

@@ -1,0 +1,61 @@
+name: Experiment idea
+description: Propose a tweak to try, or claim one of the open questions in CONTRIBUTING.md.
+title: "Idea: "
+labels: ["experiment"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome, and so are negative results. Several entries in innovations/RESULTS.md are things that did not work.
+        The list of open questions is in CONTRIBUTING.md. Say so here if you are picking one up.
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea in one or two sentences
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it might work
+      description: A paper, a result file in this repo, or your own reasoning.
+    validations:
+      required: true
+  - type: textarea
+    id: measure
+    attributes:
+      label: How we would know
+      description: >
+        Which tests should move, and against which head. Name the tests used in this repo where you can:
+        the held-out choice test, tricky Q&A, general Q&A, the in-distribution choice tests,
+        T-Rex with the shield on and off, DeepSWE.
+      placeholder: "Example: T-Rex deaths with the shield off, against CLM-8B and S1-Tweaks v0.1, over the same seeds."
+    validations:
+      required: true
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: What it needs
+      options:
+        - A CPU only
+        - One GPU for a few minutes (L40S class)
+        - One large GPU (H100 or B200)
+        - A full-scale run on the published vectors
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who would run it
+      options:
+        - I will run it and open a pull request
+        - I can run it with some help
+        - I am suggesting it for someone else
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Risks, a cost estimate, related issues.

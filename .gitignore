@@ -8,3 +8,46 @@ results/*.png
 __pycache__/
 runs/
 __pycache__/
+
+# Python
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Weights and vectors are downloaded or built, never committed.
+# docs/REPRODUCE.md says where each one comes from.
+# The demo sample examples/data/sample_decisions.npz is committed on purpose: .npz is not ignored.
+*.pt
+*.npy
+!examples/data/*.npy
+*.part
+
+# Staging folder for the release files (the two heads and their checksums)
+.release/
+
+# Local data folders written by the commands in docs/REPRODUCE.md.
+# The leading slash keeps examples/data/ out of these rules.
+/data/
+/qa_text/
+/choice/
+/choice_src/
+/heldout/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/

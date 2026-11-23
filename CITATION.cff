@@ -1,0 +1,71 @@
+# Citation metadata for this repository. GitHub shows it under "Cite this repository".
+cff-version: 1.2.0
+message: >-
+  If you use this repository or the S1-Tweaks v0.1 or S1-Router v0.1 heads, please cite it with
+  the metadata below. Please also cite Contrastive Language Models (CLM), which this work builds
+  on. It is the first entry under references.
+title: "System One Model Tweaks"
+abstract: >-
+  Measured tweaks to the CLM-8B System One decision model. Two released heads derived from the
+  CLM-v0.1-8B weights: S1-Router v0.1 (further post-training on listwise choice data) and
+  S1-Tweaks v0.1 (a weight blend of CLM's head and S1-Router). Plus experiments on backbone and
+  head quantization, head layouts and backbone swaps. Every number comes with the result file it
+  was read from and with its limits.
+type: software
+authors:
+  # TODO for the owner: this entry holds only the GitHub alias. If you want to be cited by name,
+  # replace it with a person entry, for example:
+  #   - family-names: "Your family name"
+  #     given-names: "Your given name"
+  #     alias: "samstealth"
+  - name: "samstealth"
+    alias: "samstealth"
+    website: "https://github.com/samstealth"
+repository-code: "https://github.com/samstealth/system-one-model-tweaks"
+url: "https://github.com/samstealth/system-one-model-tweaks"
+license: Apache-2.0
+version: "0.1.0"
+# TODO for the owner: add "date-released: YYYY-MM-DD" once the v0.1 release is published.
+keywords:
+  - system-one
+  - decision model
+  - contrastive learning
+  - weight interpolation
+  - quantization
+  - tool selection
+  - routing
+references:
+  - type: blog
+    title: "Contrastive Language Models"
+    authors:
+      - family-names: "Kwok"
+        given-names: "Jacky"
+      - family-names: "Kang"
+        given-names: "Hangoo"
+      - family-names: "Suresh"
+        given-names: "Tarun"
+      - family-names: "Saad-Falcon"
+        given-names: "Jon"
+      - family-names: "Pavone"
+        given-names: "Marco"
+      - family-names: "Ré"
+        given-names: "Christopher"
+      - family-names: "Mirhoseini"
+        given-names: "Azalia"
+    year: 2026
+    url: "https://contrastive-lm.notion.site"
+    repository-code: "https://github.com/Contrastive-LM/CLM"
+    notes: >-
+      Notion blog. Weights: https://huggingface.co/Contrastive-LM/CLM-v0.1-8B (Apache 2.0).
+      S1-Tweaks v0.1 and S1-Router v0.1 are derived from these weights.
+  - type: software
+    title: "System One Model from Scratch"
+    authors:
+      - name: "Vizuara AI Labs"
+    year: 2026
+    repository-code: "https://github.com/VizuaraAI/system-one-from-scratch"
+    url: "https://system-one-workshop.vercel.app"
+    license: Apache-2.0
+    notes: >-
+      A from-scratch rebuild of CLM-8B's training, made for a live workshop. This repository imports
+      it as its baseline. Workshop video: https://www.youtube.com/watch?v=vEpkc44bHVQ
