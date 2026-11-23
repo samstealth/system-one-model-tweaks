@@ -704,6 +704,96 @@
     "shield_interventions": 0,
     "inflight": 6
    }
+  },
+  "wise_0.175": {
+   "shield": {
+    "model": "clm-latest",
+    "endpoint": "http://127.0.0.1:8700 \u00b7 clm-latest \u00b7 6 requests in flight",
+    "mode": "realtime",
+    "shield": true,
+    "course_style": "original",
+    "prompt": "labeled",
+    "duration_s": 60.0,
+    "seeds": 5,
+    "survived": 3,
+    "deaths": 2,
+    "mean_best_score": 574.2,
+    "mean_decisions": 3245.4,
+    "mean_agreement_with_planner": 0.493,
+    "latency_ms_p50_median": 16.1,
+    "model_ms_p50_median": 2.0,
+    "errors": 0,
+    "answers_discarded": 1500,
+    "shield_interventions": 7392,
+    "inflight": 6
+   },
+   "noshield": {
+    "model": "clm-latest",
+    "endpoint": "http://127.0.0.1:8700 \u00b7 clm-latest \u00b7 6 requests in flight",
+    "mode": "realtime",
+    "shield": false,
+    "course_style": "original",
+    "prompt": "labeled",
+    "duration_s": 60.0,
+    "seeds": 5,
+    "survived": 0,
+    "deaths": 45,
+    "mean_best_score": 47.6,
+    "mean_decisions": 2776.4,
+    "mean_agreement_with_planner": 0.872,
+    "latency_ms_p50_median": 17.2,
+    "model_ms_p50_median": 1.9,
+    "errors": 0,
+    "answers_discarded": 68,
+    "shield_interventions": 0,
+    "inflight": 6
+   }
+  },
+  "authors_post_15seeds": {
+   "shield": {
+    "model": "clm-latest",
+    "endpoint": "http://127.0.0.1:8700 \u00c2\u00b7 clm-latest \u00c2\u00b7 6 requests in flight",
+    "mode": "realtime",
+    "shield": true,
+    "course_style": "original",
+    "prompt": "labeled",
+    "duration_s": 60.0,
+    "seeds": 15,
+    "survived": 15,
+    "deaths": 0,
+    "mean_best_score": 697.0,
+    "mean_decisions": 3379.7,
+    "mean_agreement_with_planner": 0.648,
+    "latency_ms_p50_median": 16.0,
+    "model_ms_p50_median": 1.9,
+    "errors": 0,
+    "answers_discarded": 2285,
+    "shield_interventions": 15668,
+    "inflight": 6
+   }
+  },
+  "wise_0.15_15seeds": {
+   "shield": {
+    "model": "clm-latest",
+    "endpoint": "http://127.0.0.1:8700 \u00c2\u00b7 clm-latest \u00c2\u00b7 6 requests in flight",
+    "mode": "realtime",
+    "shield": true,
+    "course_style": "original",
+    "prompt": "labeled",
+    "duration_s": 60.0,
+    "seeds": 15,
+    "survived": 14,
+    "deaths": 1,
+    "mean_best_score": 685.8,
+    "mean_decisions": 3434.9,
+    "mean_agreement_with_planner": 0.543,
+    "latency_ms_p50_median": 16.0,
+    "model_ms_p50_median": 2.2,
+    "errors": 0,
+    "answers_discarded": 2141,
+    "shield_interventions": 21022,
+    "inflight": 6
+   }
   }
  }
 }
