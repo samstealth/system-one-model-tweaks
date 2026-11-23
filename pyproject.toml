@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "system-one-tweaks"
+version = "0.1.0"
+description = "Measured tweaks to the CLM-8B System One decision model: a blended head (S1-Tweaks v0.1), quantization, head layouts and backbone swaps."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "samstealth" }]
+keywords = ["system-one", "contrastive", "embeddings", "ranking", "routing", "tool-selection", "clm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# Enough for the scorer, the no-GPU demo, the trainer and the tests.
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.1",
+    "pyarrow>=14",
+    "huggingface_hub>=0.20",
+]
+
+[project.optional-dependencies]
+# examples/route_text.py: embed text with Qwen3-8B through transformers (needs a GPU)
+text = ["transformers>=4.51", "accelerate"]
+# the GPU runs in innovations/modal_*.py and pipeline/
+modal = ["modal"]
+# python -m pytest -q tests
+dev = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/samstealth/system-one-model-tweaks"
+Issues = "https://github.com/samstealth/system-one-model-tweaks/issues"
+"Upstream CLM" = "https://github.com/Contrastive-LM/CLM"
+"Workshop baseline" = "https://github.com/VizuaraAI/system-one-from-scratch"
+
+[tool.setuptools]
+packages = ["innovations"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

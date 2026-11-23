@@ -1,0 +1,12 @@
+# Same set as "pip install -e '.[dev]'". Enough for the scorer, examples/demo_cpu.py and the tests.
+# No GPU? Any CPU build of torch works. To skip the large CUDA wheels on Linux, install torch first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+numpy>=1.24
+torch>=2.1
+pyarrow>=14
+huggingface_hub>=0.20
+pytest>=7
+
+# Optional, not installed by this file:
+#   examples/route_text.py (text in, needs a GPU):  pip install "transformers>=4.51" accelerate
+#   the Modal GPU runs (innovations/modal_*.py):     pip install modal

@@ -1,4 +1,4 @@
-# Results (22 November 2026)
+# Results (22 and 23 November 2026)
 
 Everything here was measured, not estimated. "Tricky" is the hard-negative Q&A test (gold answer against
 its own up-to-10 Gemini wrong answers; CLM-8B publishes 69.2%). "General" is in-batch top-1 retrieval over
@@ -31,8 +31,10 @@ rebuilt 12k-pair test slice (contexts cut to 512 tokens, so absolute numbers sit
 |---|---|---|
 | Qwen3-8B bf16 | 66.4% | 81.8% |
 | Qwen3-8B FP8 | 65.6% | 81.7% |
+| Qwen3-8B AWQ 4-bit | 61.9% | 79.7% |
 
-FP8 costs 0.7 points tricky for a 22 to 24% faster backbone. AWQ accuracy: not yet measured.
+FP8 is the practical choice: it costs 0.7 points tricky for a 22 to 24% faster backbone. AWQ is 36 to 37% faster
+but costs 4.5 points tricky and 2.1 general (`auth_awq.json`).
 
 **Heads and action cache**, the authors' mid-trained head, CPU (`quant_heads_mid.json`):
 
@@ -113,17 +115,19 @@ post-trained head, on Qwen3-8B vectors:
   post-training. All these variants wash it out, including a gentle run starting from their post head.
   Section 6 fixes this.
 
-## 6. Keeping T-Rex: the best head so far
+## 6. Keeping T-Rex: the launch head
 
-Full table, every attempt and costs: `results/innovations/day2_2026-11-22.md`.
+Full tables, every attempt and costs: `results/innovations/day2_2026-11-22.md` and `day3_2026-11-23.md`.
 
-**`wise_0.15`** is a weight blend with no extra training: 85% the authors' post head and 15%
-`post_choice_hn_frompost` (`python -m innovations.interpolate --alpha 0.15`). Compared with the authors' post head:
+**`wise_0.15`** (released as S1-Tweaks v0.1) is a weight blend with no extra training: 85% the authors' post head
+and 15% `post_choice_hn_frompost` (`python -m innovations.interpolate --alpha 0.15`). Compared with the authors' post head:
 
 | Test | CLM post head | Ours (`wise_0.15`) |
 |---|---|---|
-| **T-Rex, shield on** (5 seeds: survived, deaths, score) | 5/5, 0, 697 | **5/5, 0, 697** |
-| T-Rex, shield off (deaths, score) | **22, 221** | 45, 55 |
+| **T-Rex, shield on**, 15 fresh seeds (survived, deaths, mean best score) | 15/15, 0, 697.0 | 14/15, 1, 685.8 |
+| T-Rex, shield on, first 5 seeds | 5/5, 0, 697 | 5/5, 0, 697 |
+| T-Rex planner agreement, shield on, 15 seeds | **64.8%** | 54.3% |
+| T-Rex, shield off, 5 seeds (deaths, score) | **22, 221** | 45, 55 |
 | Tricky Q&A | 66.1% | **66.6%** |
 | General Q&A | 81.8% | 81.7% |
 | Tool choice (Glaive) | 56.0% | **71.7%** |
@@ -131,15 +135,46 @@ Full table, every attempt and costs: `results/innovations/day2_2026-11-22.md`.
 | Intent routing (CLINC) | 29.0% | **37.4%** |
 | Label reading | 32.9% | **35.3%** |
 | ARC / CommonsenseQA | 30.6% / 30.7% | **33.0% / 33.6%** |
-| DeepSWE (38 tasks, seed 1234) | 31/38 | 30/38 |
+| DeepSWE, 38 tasks, mean of 5 seeds | 31.0 | 30.8 |
 
-- It ties CLM on T-Rex with the shield on (the published setting) and wins every listwise test and tricky
-  Q&A. General Q&A is 0.1 points lower. DeepSWE is one task lower, inside the authors' own 29 to 32 seed range.
-- Not yet a clean win: with the shield off CLM still plays T-Rex far better, and the choice gains are in-distribution.
-- What failed: blending in more of our head (0.25: 4/5, 0.5: 0/5); distillation to the post head (0/5);
-  distillation with a strong L2 anchor (5/5 but no gains at all); our ADP agent-data mix, 118k steps from
-  34 configs (2/5 with distillation, 0/5 without). The authors' T-Rex skill sits in a small, fragile
-  weight change that only a light blend preserves.
-- Next, all cheap: blends between 0.15 and 0.25, DeepSWE over 5 seeds, and a choice test from held-out sources.
+- **T-Rex is a near-tie, not a match.** Over the two runs `wise_0.15` survives 19 of 20 games against 20 of 20 for
+  the authors' head. Its one death is seed 0 of the 15-seed run, a seed it survived in the 5-seed run, so real-time
+  play is not fully deterministic. It also agrees with the planner less often and leans on the shield more.
+- With the shield off the authors' head is far better. Every blend dies 45 times in 5 seeds, against 22.
+- DeepSWE is a tie within seed noise: per seed 31, 32, 30, 31, 31 for the authors' head and 30, 32, 30, 31, 31 for ours
+  (seeds 1234, 1, 2, 3, 4).
+- The choice tests in this table share sources with our training data. Section 7 is the held-out check.
+- No blend above 0.15 keeps T-Rex: 0.175 survives 3/5, 0.2 4/5, 0.25 4/5, 0.5 0/5 (5 seeds each).
+- What else failed: distillation to the post head (0/5); distillation with a strong L2 anchor (5/5 but no gains at
+  all); our ADP agent-data mix, 118k steps from 34 configs (2/5 with distillation, 0/5 without). The authors' T-Rex
+  skill sits in a small, fragile weight change that only a light blend preserves.
 
-Total Modal spend for both days: $63.15 (`modal billing summary`).
+## 7. Held-out choice test: sources no head here was trained on
+
+13,194 rows from eight public sources that none of our training data touches, built by
+`innovations/build_heldout_choice.py` with the same option templates as training (up to 10 options per question).
+Rows whose question text also appears in our training file were dropped (34 in total). OpenBookQA is excluded
+because MMLU's auxiliary_train, which we trained on, contains it. Top-1 accuracy, `heldout.json`:
+
+| Source (rows) | Kind | CLM post head | `wise_0.15` | Full post-train (`post_choice_hn_frompost`) |
+|---|---|---|---|---|
+| BFCL v3 (1,252) | tool choice | 65.4% | **68.7%** | 76.8% |
+| MASSIVE (2,951) | intent routing | 26.3% | **31.7%** | 60.7% |
+| HWU64 (1,072) | intent routing | 29.5% | **34.4%** | 57.3% |
+| Bitext (2,000) | support routing | 16.1% | **17.9%** | 39.8% |
+| SciQ (1,000) | science questions | 56.5% | **60.3%** | 69.8% |
+| QASC (923) | science questions | 36.4% | **39.0%** | 48.6% |
+| MMLU test (1,997) | mixed knowledge | 28.9% | 29.2% | 31.6% |
+| MedMCQA (1,999) | medical questions | 29.0% | 29.1% | 30.0% |
+
+- **The gains transfer.** `wise_0.15` beats the authors' head on tools (+3.3), routing (+1.8 to +5.4) and science
+  questions (+2.6, +3.8). MMLU and MedMCQA are flat.
+- The gains are smaller than on the in-distribution tests of section 6 (tool choice +15.7 there, +3.3 here).
+- The fully post-trained head transfers much more (MASSIVE 26.3% to 60.7%, Bitext 16.1% to 39.8%, BFCL 65.4% to
+  76.8%), but it survives 0/5 T-Rex courses. It is the better pick when the job is routing or tool choice and
+  nothing like T-Rex is needed.
+
+Open questions, all cheap to test: a blend that keeps T-Rex with the shield off, agent data that restores the
+authors' T-Rex skill, and the shared head (section 3) at full scale.
+
+Total Modal spend for all three days: about $69 (`modal billing summary` read $68.20 before the last runs were metered).
