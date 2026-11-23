@@ -11,6 +11,7 @@ which is what the official CLM engine computes (clm/heads.py, clm/engine.py).
 
     clm = load_head("clm")                  # CLM-v0.1-8B from Hugging Face, cached after the first call
     s1 = load_head("s1-tweaks")             # S1-Tweaks v0.1 from this repo's release page
+    router = load_head("s1-router")         # S1-Router v0.1: stronger at tools and routing, no T-Rex skill
     mine = load_head("runs/my_head.pt")     # a local file, an https URL, or hf://org/repo/file.pt
 
     p = s1.probs(state_vec, option_vecs)    # (4096,), (K, 4096)            -> (K,), sums to 1
@@ -45,13 +46,24 @@ CLM_FILE = "CLM_v0.1-8B.pt"
 # jackyk02/qwen3_8b_head/qwen3_8b_posttrained_head.pt). Pinned so the numbers stay reproducible.
 CLM_REVISION = "e939398d4556fcd9400c76fa8c5a513202f42b0a"
 
+RELEASE_URL = "https://github.com/samstealth/system-one-model-tweaks/releases/download/v0.1/"
+
+# S1-Tweaks v0.1: 85% CLM's head + 15% S1-Router, blended in weight space (run wise_0.15). Keeps most of CLM's agent skill.
 S1_TWEAKS_NAME = "S1-Tweaks v0.1"
 S1_TWEAKS_FILE = "s1_tweaks_v0.1.pt"
-S1_TWEAKS_URL = "https://github.com/samstealth/system-one-model-tweaks/releases/download/v0.1/" + S1_TWEAKS_FILE
-S1_TWEAKS_SHA256 = None  # PENDING: sha256 of the released file. Once set, every fresh download is checked against it.
+S1_TWEAKS_URL = RELEASE_URL + S1_TWEAKS_FILE
+S1_TWEAKS_SHA256 = "c0a32217d1288d8452046bda9bcb045b53b052b943ef7de42652691e057fd9d9"  # every fresh download is checked
+
+# S1-Router v0.1: CLM's head post-trained on listwise choice data (run post_choice_hn_frompost). Much stronger
+# at tool choice and routing, but it loses CLM's T-Rex skill (0/5 courses).
+S1_ROUTER_NAME = "S1-Router v0.1"
+S1_ROUTER_FILE = "s1_router_v0.1.pt"
+S1_ROUTER_URL = RELEASE_URL + S1_ROUTER_FILE
+S1_ROUTER_SHA256 = "d9f22c9fe0a52d4bd32fe1a6c965b3900fc854c44f1c6267f23bf6e897911b18"
 
 CLM_ALIASES = ("clm", "clm-8b", "clm-v0.1-8b")
 S1_TWEAKS_ALIASES = ("s1-tweaks", "s1-tweaks-v0.1", "s1_tweaks", "s1_tweaks_v0.1")
+S1_ROUTER_ALIASES = ("s1-router", "s1-router-v0.1", "s1_router", "s1_router_v0.1")
 
 
 class HeadNotAvailable(FileNotFoundError):
@@ -97,38 +109,53 @@ def download_clm_head(revision=CLM_REVISION):
         ) from e
 
 
-def download_s1_tweaks(url=S1_TWEAKS_URL, force=False):
-    """S1-Tweaks v0.1 from the release page. Returns the local path.
-
-    Set S1_TWEAKS_HEAD=/path/to/s1_tweaks_v0.1.pt to use a local copy and skip the download.
-    """
-    local = os.environ.get("S1_TWEAKS_HEAD")
+def _download_release(name, fname, url, sha256, env, how_to_build, force=False):
+    """One of this repo's released heads, from the release page into cache_dir(). Returns the local path."""
+    local = os.environ.get(env)
     if local:
         if not os.path.isfile(local):
-            raise HeadNotAvailable(f"S1_TWEAKS_HEAD is set to {local}, which is not a file.")
+            raise HeadNotAvailable(f"{env} is set to {local}, which is not a file.")
         return local
-    options = (f"  - pass a local copy: --head /path/to/{S1_TWEAKS_FILE} (or set S1_TWEAKS_HEAD to that path)\n"
-               "  - build it yourself with python -m innovations.interpolate (see docs/REPRODUCE.md)\n"
+    options = (f"  - pass a local copy: --head /path/to/{fname} (or set {env} to that path)\n"
+               f"  - build it yourself with {how_to_build} (see docs/REPRODUCE.md)\n"
                "  - use CLM's own head: load_head(\"clm\")")
-    dest = os.path.join(cache_dir(), S1_TWEAKS_FILE)
+    dest = os.path.join(cache_dir(), fname)
     fresh = force or not os.path.isfile(dest)
     try:
         _download(url, dest, force)
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            raise HeadNotAvailable(f"{S1_TWEAKS_NAME} is not published yet: {url} answered HTTP 404, "
+            raise HeadNotAvailable(f"{name} is not published yet: {url} answered HTTP 404, "
                                    f"so the v0.1 release is not live.\nUntil it is, you can:\n{options}") from None
-        raise HeadNotAvailable(f"Could not download {S1_TWEAKS_NAME} from {url}: HTTP {e.code}.\nYou can:\n{options}") from None
+        raise HeadNotAvailable(f"Could not download {name} from {url}: HTTP {e.code}.\nYou can:\n{options}") from None
     except OSError as e:  # URLError, timeouts, no network
-        raise HeadNotAvailable(f"Could not download {S1_TWEAKS_NAME} from {url}: {type(e).__name__}: {e}\n"
+        raise HeadNotAvailable(f"Could not download {name} from {url}: {type(e).__name__}: {e}\n"
                                f"You can:\n{options}") from None
-    if fresh and S1_TWEAKS_SHA256 and url == S1_TWEAKS_URL:
+    if fresh and sha256:
         with open(dest, "rb") as f:
             got = hashlib.sha256(f.read()).hexdigest()
-        if got != S1_TWEAKS_SHA256:
+        if got != sha256:
             os.remove(dest)
             raise HeadNotAvailable(f"The file at {url} does not match the published checksum (got sha256 {got}). It was not kept.")
     return dest
+
+
+def download_s1_tweaks(url=S1_TWEAKS_URL, force=False):
+    """S1-Tweaks v0.1 from the release page. Returns the local path.
+
+    Set S1_TWEAKS_HEAD=/path/to/s1_tweaks_v0.1.pt to use a local copy and skip the download.
+    """
+    return _download_release(S1_TWEAKS_NAME, S1_TWEAKS_FILE, url, S1_TWEAKS_SHA256 if url == S1_TWEAKS_URL else None,
+                             "S1_TWEAKS_HEAD", "python -m innovations.interpolate", force)
+
+
+def download_s1_router(url=S1_ROUTER_URL, force=False):
+    """S1-Router v0.1 from the release page. Returns the local path.
+
+    Set S1_ROUTER_HEAD=/path/to/s1_router_v0.1.pt to use a local copy and skip the download.
+    """
+    return _download_release(S1_ROUTER_NAME, S1_ROUTER_FILE, url, S1_ROUTER_SHA256 if url == S1_ROUTER_URL else None,
+                             "S1_ROUTER_HEAD", "the post-training command", force)
 
 
 def _read(path):
@@ -311,6 +338,7 @@ def load_head(src, device="cpu", name=None):
     src is one of:
       "clm"                       CLM's official head, downloaded from Hugging Face
       "s1-tweaks"                 S1-Tweaks v0.1, downloaded from this repo's release page
+      "s1-router"                 S1-Router v0.1, downloaded from this repo's release page
       a local path                a .pt file in CLM's checkpoint layout (or this repo's trainer layout)
       an http(s) URL              downloaded once into cache_dir()
       "hf://org/repo/file.pt"     a file in a Hugging Face model repo
@@ -325,6 +353,8 @@ def load_head(src, device="cpu", name=None):
         path, label = download_clm_head(), CLM_NAME
     elif key in S1_TWEAKS_ALIASES:
         path, label = download_s1_tweaks(), S1_TWEAKS_NAME
+    elif key in S1_ROUTER_ALIASES:
+        path, label = download_s1_router(), S1_ROUTER_NAME
     elif os.path.isfile(src):
         path, label = src, os.path.splitext(os.path.basename(src))[0]
     elif key.startswith(("http://", "https://")):
@@ -345,7 +375,7 @@ def load_head(src, device="cpu", name=None):
             raise HeadNotAvailable(f"Could not get {src} from Hugging Face: {type(e).__name__}: {e}") from e
         label = os.path.splitext(parts[-1])[0]
     else:
-        raise FileNotFoundError(f"No head at {src!r}. Pass \"clm\", \"s1-tweaks\", a local .pt file, an https URL "
+        raise FileNotFoundError(f"No head at {src!r}. Pass \"clm\", \"s1-tweaks\", \"s1-router\", a local .pt file, an https URL "
                                 "or hf://org/repo/file.pt.")
     return Scorer(_model_from_checkpoint(_read(path), path), name or label, path, device)
 
@@ -354,7 +384,7 @@ def blend(a, b, alpha, name=None, device="cpu"):
     """Weight-space blend of two heads with the same layout:  (1 - alpha) * a + alpha * b .
 
     a and b are Scorers or anything load_head accepts. S1-Tweaks v0.1 is
-    blend(CLM's head, our choice-post-trained head, 0.15). No training is involved.
+    blend("clm", "s1-router", 0.15). No training is involved.
     """
     A, B = load_head(a), load_head(b)
     ca, cb = A.checkpoint(), B.checkpoint()
@@ -368,7 +398,7 @@ def blend(a, b, alpha, name=None, device="cpu"):
 def main(argv=None):
     p = argparse.ArgumentParser(description="Print the layout, parameter count and scale of one or more heads.")
     p.add_argument("heads", nargs="*", default=["clm"],
-                   help='"clm", "s1-tweaks", a local .pt file, an https URL or hf://org/repo/file.pt (default: clm)')
+                   help='"clm", "s1-tweaks", "s1-router", a local .pt file, an https URL or hf://org/repo/file.pt (default: clm)')
     a = p.parse_args(argv)
     code = 0
     for h in a.heads:

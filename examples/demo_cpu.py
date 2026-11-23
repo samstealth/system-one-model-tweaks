@@ -2,14 +2,15 @@
 
 What it does. It loads a small sample of real decisions whose Qwen3-8B vectors were computed in
 advance on a GPU (examples/data/sample_decisions.npz and .jsonl). It scores every decision with
-CLM's official head and with S1-Tweaks v0.1, prints a few decisions side by side, then prints the
-accuracy of each head per source.
+CLM's official head and with this repo's two heads (S1-Tweaks v0.1 and S1-Router v0.1), prints a
+few decisions side by side, then prints the accuracy of each head per source.
 
 What it does not do. It does not run the Qwen3-8B backbone. Turning new text into vectors needs a
 GPU: see examples/route_text.py.
 
     python examples/demo_cpu.py
-    python examples/demo_cpu.py --head /path/to/s1_tweaks_v0.1.pt    # a local copy of the head
+    python examples/demo_cpu.py --head /path/to/s1_tweaks_v0.1.pt    # one local head against CLM's
+    python examples/demo_cpu.py --head s1-tweaks --head my_head.pt   # repeat --head to compare several
     python examples/demo_cpu.py --show 6 --disagreements             # decisions where the heads differ
 """
 import argparse
@@ -23,7 +24,8 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))  # so the demo runs from a clone without "pip install -e ."
 
-from innovations.scorer import CLM_NAME, S1_TWEAKS_FILE, S1_TWEAKS_NAME, load_head  # noqa: E402
+from innovations.scorer import (CLM_NAME, S1_ROUTER_FILE, S1_ROUTER_NAME, S1_TWEAKS_FILE,  # noqa: E402
+                                S1_TWEAKS_NAME, load_head)
 
 DATA_DIR = os.path.join(HERE, "data")
 NAME = "sample_decisions"
@@ -143,13 +145,15 @@ def accuracy_table(rows, n_opts, gold, picks):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Score a sample of real decisions with CLM's head and S1-Tweaks v0.1 on a CPU.")
+    p = argparse.ArgumentParser(description="Score a sample of real decisions with CLM's head, S1-Tweaks v0.1 and "
+                                            "S1-Router v0.1 on a CPU.")
     p.add_argument("--data", default=DATA_DIR, help="folder with sample_decisions.npz and .jsonl (default: examples/data)")
     p.add_argument("--clm-head", default="clm", help='CLM\'s head: "clm" downloads it from Hugging Face, or pass a local .pt file')
-    p.add_argument("--head", default="s1-tweaks",
-                   help='the head to compare: "s1-tweaks" downloads S1-Tweaks v0.1, or pass a local .pt file or a URL')
+    p.add_argument("--head", action="append", default=None,
+                   help='a head to compare with CLM\'s: "s1-tweaks", "s1-router", a local .pt file or a URL. '
+                        "Repeat to compare several. Default: s1-tweaks and s1-router, each downloaded from the release page.")
     p.add_argument("--show", type=int, default=3, help="how many decisions to print (default 3)")
-    p.add_argument("--disagreements", action="store_true", help="print only decisions where the two heads pick differently")
+    p.add_argument("--disagreements", action="store_true", help="print only decisions where the heads pick differently")
     a = p.parse_args(argv)
 
     q, opts, n_opts, gold, rows = load_sample(a.data)
@@ -158,16 +162,21 @@ def main(argv=None):
         print("NOTE: this is a SYNTHETIC sample (random vectors, not Qwen3-8B output). The accuracies below mean nothing.")
 
     heads = []
-    s1_label = S1_TWEAKS_NAME if os.path.basename(a.head) == S1_TWEAKS_FILE else None
-    for src, label, role in ((a.clm_head, CLM_NAME if a.clm_head == "clm" else None, CLM_NAME), (a.head, s1_label, S1_TWEAKS_NAME)):
+    known = {"clm": CLM_NAME, "s1-tweaks": S1_TWEAKS_NAME, "s1-router": S1_ROUTER_NAME,
+             S1_TWEAKS_FILE: S1_TWEAKS_NAME, S1_ROUTER_FILE: S1_ROUTER_NAME}  # a local copy keeps its display name
+    for src in [a.clm_head] + (a.head or ["s1-tweaks", "s1-router"]):
+        label = known.get(src.lower()) or known.get(os.path.basename(src))
         try:
             heads.append(load_head(src, name=label))
         except (OSError, ValueError) as e:
-            print(f"\nSkipping {role if src in ('clm', 's1-tweaks') else src}: {e}")
+            print(f"\nSkipping {label or src}: {e}")
     if not heads:
         raise SystemExit("\nNo head could be loaded, so there is nothing to score. See the messages above.")
-    if len({h.name for h in heads}) < len(heads):
-        heads[1].name += " (2)"
+    seen = {}
+    for h in heads:  # two files with the same name still get their own column
+        seen[h.name] = seen.get(h.name, 0) + 1
+        if seen[h.name] > 1:
+            h.name += f" ({seen[h.name]})"
     for h in heads:
         print("Head  " + h.describe())
 
@@ -183,7 +192,7 @@ def main(argv=None):
     if a.disagreements and len(heads) < 2:
         print("\n--disagreements needs two heads; showing the first decisions instead.")
     elif a.disagreements and not shown:
-        print("\nThe two heads pick the same option on every decision in this sample.")
+        print("\nThe heads pick the same option on every decision in this sample.")
     for i in shown:
         print_decision(i, rows[i], len(rows), probs, picks)
 

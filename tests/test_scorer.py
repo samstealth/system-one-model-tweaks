@@ -49,7 +49,10 @@ def no_network(monkeypatch, tmp_path):
     monkeypatch.setattr(scorer.urllib.request, "urlopen", refuse)
     monkeypatch.setattr("huggingface_hub.hf_hub_download", refuse)
     monkeypatch.delenv("S1_TWEAKS_HEAD", raising=False)
+    monkeypatch.delenv("S1_ROUTER_HEAD", raising=False)
     monkeypatch.setenv("S1_TWEAKS_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(scorer, "S1_TWEAKS_SHA256", None)  # tests serve tiny stand-in files, not the release
+    monkeypatch.setattr(scorer, "S1_ROUTER_SHA256", None)
 
 
 def not_found(req, timeout=None):
@@ -207,6 +210,23 @@ def test_s1_tweaks_before_the_release_is_live(tmp_path, monkeypatch):
         load_head("s1-tweaks")
 
 
+def test_s1_router_alias(tmp_path, monkeypatch):
+    monkeypatch.setattr(scorer.urllib.request, "urlopen", not_found)
+    with pytest.raises(HeadNotAvailable) as e:
+        load_head("s1-router")
+    assert scorer.S1_ROUTER_URL in str(e.value) and "S1_ROUTER_HEAD" in str(e.value)
+    tiny_head(tmp_path / "router.pt")
+    monkeypatch.setenv("S1_ROUTER_HEAD", str(tmp_path / "router.pt"))
+    assert load_head("S1-Router").name == "S1-Router v0.1"
+
+
+def test_published_checksum_is_a_sha256():
+    import re
+    src = open(scorer.__file__, encoding="utf-8").read()  # the fixture blanks the constant, so read the source
+    m = re.search(r'^S1_TWEAKS_SHA256 = "([0-9a-f]{64})"', src, re.M)
+    assert m, "S1_TWEAKS_SHA256 must be the 64-hex sha256 of the released file"
+
+
 def test_downloads_are_cached(tmp_path, monkeypatch):
     tiny_head(tmp_path / "remote.pt")
     calls = []
@@ -317,7 +337,7 @@ def test_demo_cpu_runs_with_clm_only_while_the_release_is_not_live(sample, capsy
     demo = example("demo_cpu")
     r = demo.main(["--data", str(sample / "data"), "--disagreements"])
     out = capsys.readouterr().out
-    assert "Skipping S1-Tweaks v0.1" in out and "not published yet" in out
+    assert "Skipping S1-Tweaks v0.1" in out and "Skipping S1-Router v0.1" in out and "not published yet" in out
     assert list(r["accuracy"]) == ["CLM-8B"] and "with 1 head in" in out and "--disagreements needs two heads" in out
 
 
