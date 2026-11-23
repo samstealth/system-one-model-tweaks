@@ -1,5 +1,32 @@
 {
- "note": "pipeline/run_deepswe.py, seed 1234, 38 held-out tasks x 4 rollouts; random 0.737, oracle 0.895",
- "authors_post": "['[bon] 38 tasks x 4.0 rollouts | random 0.737 | oracle 0.895 | decidable 13', '[bon] clm:last_12_mean 81.579% (31/38)']",
- "wise_0.15": "['[bon] 38 tasks x 4.0 rollouts | random 0.737 | oracle 0.895 | decidable 13', '[bon] clm:last_12_mean 78.947% (30/38)']"
+ "note": "pipeline/run_deepswe.py, 38 held-out tasks x 4 rollouts; random 0.737, oracle 0.895; count = tasks solved by best-of-4 pick",
+ "seeds": [
+  1234,
+  1,
+  2,
+  3,
+  4
+ ],
+ "heads": {
+  "authors_post": {
+   "solved": [
+    31,
+    32,
+    30,
+    31,
+    31
+   ],
+   "mean": 31.0
+  },
+  "wise_0.15": {
+   "solved": [
+    30,
+    32,
+    30,
+    31,
+    31
+   ],
+   "mean": 30.8
+  }
+ }
 }

@@ -1,0 +1,95 @@
+{
+ "note": "innovations/build_heldout_choice.py: test-only sources no head was trained on; top-1 % over K<=10 options; rows overlapping choice_train.jsonl dropped",
+ "rows": {
+  "bfcl": 1252,
+  "massive": 2951,
+  "hwu64": 1072,
+  "bitext": 2000,
+  "sciq": 1000,
+  "qasc": 923,
+  "mmlu": 1997,
+  "medmcqa": 1999
+ },
+ "dropped": {
+  "bfcl": 0,
+  "massive": 23,
+  "hwu64": 4,
+  "bitext": 0,
+  "sciq": 0,
+  "qasc": 3,
+  "mmlu": 3,
+  "medmcqa": 1
+ },
+ "heads": {
+  "authors_post": {
+   "bfcl": 65.4,
+   "bitext": 16.1,
+   "hwu64": 29.5,
+   "massive": 26.3,
+   "medmcqa": 29.0,
+   "mmlu": 28.9,
+   "qasc": 36.4,
+   "sciq": 56.5
+  },
+  "wise_0.15": {
+   "bfcl": 68.7,
+   "bitext": 17.9,
+   "hwu64": 34.4,
+   "massive": 31.7,
+   "medmcqa": 29.1,
+   "mmlu": 29.2,
+   "qasc": 39.0,
+   "sciq": 60.3
+  },
+  "wise_0.175": {
+   "bfcl": 69.5,
+   "bitext": 18.6,
+   "hwu64": 35.4,
+   "massive": 32.2,
+   "medmcqa": 29.1,
+   "mmlu": 29.4,
+   "qasc": 39.9,
+   "sciq": 60.8
+  },
+  "wise_0.2": {
+   "bfcl": 69.7,
+   "bitext": 19.3,
+   "hwu64": 36.2,
+   "massive": 33.3,
+   "medmcqa": 29.1,
+   "mmlu": 29.4,
+   "qasc": 40.5,
+   "sciq": 61.3
+  },
+  "wise_0.25": {
+   "bfcl": 70.5,
+   "bitext": 20.3,
+   "hwu64": 38.1,
+   "massive": 35.5,
+   "medmcqa": 29.4,
+   "mmlu": 29.4,
+   "qasc": 41.7,
+   "sciq": 61.6
+  },
+  "wise_0.5": {
+   "bfcl": 74.8,
+   "bitext": 26.7,
+   "hwu64": 46.7,
+   "massive": 45.8,
+   "medmcqa": 29.4,
+   "mmlu": 30.8,
+   "qasc": 46.5,
+   "sciq": 66.8
+  },
+  "post_choice_hn_frompost": {
+   "bfcl": 76.8,
+   "bitext": 39.8,
+   "hwu64": 57.3,
+   "massive": 60.7,
+   "medmcqa": 30.0,
+   "mmlu": 31.6,
+   "qasc": 48.6,
+   "sciq": 69.8
+  }
+ }
+}

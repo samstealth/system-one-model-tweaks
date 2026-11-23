@@ -64,7 +64,7 @@ def wait(url, proc, log, seconds=900):
     raise TimeoutError(url)
 
 
-def body(tag, ckpt, model, seeds):
+def body(tag, ckpt, model, seeds, shield_only=False):
     vol.reload()
     out = f"/data/trex/{tag}"
     os.makedirs(out, exist_ok=True)
@@ -89,9 +89,7 @@ def body(tag, ckpt, model, seeds):
     base = ["--model", model, "--seeds", str(seeds)]
     play(base, f"{out}/shield.json.gz", f"{out}/shield.json")
     vol.commit()
-    if model == "clm":
-        play(base + ["--no-shield"], f"{out}/noshield.json.gz", f"{out}/noshield.json")
-    else:
+    if not shield_only:  # --shield-only: e.g. extra seeds for the headline (shield on) number
         play(base + ["--no-shield"], f"{out}/noshield.json.gz", f"{out}/noshield.json")
     vol.commit()
     for p in procs:
@@ -106,8 +104,8 @@ def body(tag, ckpt, model, seeds):
 
 
 @app.function(image=image, volumes={"/data": vol}, gpu="L40S", cpu=8, memory=48000, timeout=3000)
-def run_clm(tag, ckpt, seeds):
-    return body(tag, ckpt, "clm", seeds)
+def run_clm(tag, ckpt, seeds, shield_only=False):
+    return body(tag, ckpt, "clm", seeds, shield_only)
 
 
 @app.function(image=image, volumes={"/data": vol}, cpu=8, memory=8192, timeout=3000,
@@ -117,5 +115,5 @@ def run_jev(tag, seeds):
 
 
 @app.local_entrypoint()
-def main(tag: str = "authors", ckpt: str = "authors", model: str = "clm", seeds: int = 5):
-    print(run_clm.remote(tag, ckpt, seeds) if model == "clm" else run_jev.remote(tag, seeds))
+def main(tag: str = "authors", ckpt: str = "authors", model: str = "clm", seeds: int = 5, shield_only: bool = False):
+    print(run_clm.remote(tag, ckpt, seeds, shield_only) if model == "clm" else run_jev.remote(tag, seeds))

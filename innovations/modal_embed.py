@@ -177,14 +177,14 @@ def _pad_negs(lists, emb_fn, dim, K=10):
 
 
 @app.function(image=image, volumes={"/data": vol}, timeout=24 * 3600, cpu=4, memory=64000)
-def run_job(job, backbone, src, chunk=100000, engine="vllm", state_format="{context}\n\n{question}"):
+def run_job(job, backbone, src, chunk=100000, engine="vllm", state_format="{context}\n\n{question}", root="", splits="train,test"):
     import numpy as np
     vol.reload()
     E = Embedder(backbone=backbone, engine=engine)
     emb = lambda texts, keep="head": np.concatenate([E.embed.remote(texts[i:i + 4096], keep) for i in range(0, len(texts), 4096)])
-    root = f"/data/emb/{backbone}"
+    root = root or f"/data/emb/{backbone}"
     if job == "qa":
-        for split in ("train", "test"):
+        for split in [x for x in ("train", "test") if x in splits.split(",")]:
             rows = [json.loads(l) for l in open(f"{src}/qa_text_{split}.jsonl")]
             states = [state_format.format(**r) for r in rows]
             for c, i in enumerate(range(0, len(rows), chunk)):
@@ -200,6 +200,8 @@ def run_job(job, backbone, src, chunk=100000, engine="vllm", state_format="{cont
                 vol.commit(); print(split, c, len(part), flush=True)
     elif job == "choice":
         for split, shard in (("train", "shard_10"), ("test", "shard_11")):
+            if not os.path.exists(f"{src}/choice_{split}.jsonl"):  # e.g. test-only held-out sets
+                continue
             rows = [json.loads(l) for l in open(f"{src}/choice_{split}.jsonl")]
             for c, i in enumerate(range(0, len(rows), chunk)):
                 if os.path.exists(f"{root}/neg/{shard}/chunk_{c:04d}_ncnt.npy"):  # written last by _save: resume
@@ -279,7 +281,7 @@ def agent_chunks(src="/data/agent/vec", root="/data/emb/qwen3-8b", shard="shard_
 
 
 @app.local_entrypoint()
-def main(job: str = "qa", backbone: str = "qwen3-8b", src: str = "", engine: str = "vllm", chunks: str = "0"):
+def main(job: str = "qa", backbone: str = "qwen3-8b", src: str = "", engine: str = "vllm", chunks: str = "0", root: str = "", splits: str = "train,test"):
     if job == "heads":
         print(fetch_heads.remote())
         return
@@ -297,4 +299,4 @@ def main(job: str = "qa", backbone: str = "qwen3-8b", src: str = "", engine: str
         print(json.dumps(out, indent=1))
         return
     src = src or {"qa": "/data/qa_text", "choice": "/data/choice"}[job]
-    print(run_job.remote(job, backbone, src, engine=engine))
+    print(run_job.remote(job, backbone, src, engine=engine, root=root, splits=splits))

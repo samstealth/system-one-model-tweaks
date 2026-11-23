@@ -660,6 +660,50 @@
     "shield_interventions": 0,
     "inflight": 6
    }
+  },
+  "wise_0.2": {
+   "shield": {
+    "model": "clm-latest",
+    "endpoint": "http://127.0.0.1:8700 \u00b7 clm-latest \u00b7 6 requests in flight",
+    "mode": "realtime",
+    "shield": true,
+    "course_style": "original",
+    "prompt": "labeled",
+    "duration_s": 60.0,
+    "seeds": 5,
+    "survived": 4,
+    "deaths": 1,
+    "mean_best_score": 629.2,
+    "mean_decisions": 3279.4,
+    "mean_agreement_with_planner": 0.508,
+    "latency_ms_p50_median": 16.1,
+    "model_ms_p50_median": 2.1,
+    "errors": 0,
+    "answers_discarded": 1486,
+    "shield_interventions": 7211,
+    "inflight": 6
+   },
+   "noshield": {
+    "model": "clm-latest",
+    "endpoint": "http://127.0.0.1:8700 \u00b7 clm-latest \u00b7 6 requests in flight",
+    "mode": "realtime",
+    "shield": false,
+    "course_style": "original",
+    "prompt": "labeled",
+    "duration_s": 60.0,
+    "seeds": 5,
+    "survived": 0,
+    "deaths": 45,
+    "mean_best_score": 46.0,
+    "mean_decisions": 2773.8,
+    "mean_agreement_with_planner": 0.885,
+    "latency_ms_p50_median": 17.2,
+    "model_ms_p50_median": 2.0,
+    "errors": 0,
+    "answers_discarded": 81,
+    "shield_interventions": 0,
+    "inflight": 6
+   }
   }
  }
 }
