@@ -1,0 +1,42 @@
+{
+ "source": "innovations/render_trex3.py, frames recorded by pipeline/run_trex.py (official T-Rex courses, 60 s realtime, 60 steps/s)",
+ "panels": [
+  {
+   "tag": "authors",
+   "title": "CLM-8B (original)"
+  },
+  {
+   "tag": "choice_hn_frompost",
+   "title": "S1-Router v0.1 (post-trained, no blend)"
+  },
+  {
+   "tag": "wise_0.15",
+   "title": "S1-Tweaks v0.1 (85% CLM-8B + 15% S1-Router)"
+  }
+ ],
+ "seed": 0,
+ "shield": true,
+ "start_s": 7.0,
+ "end_s": 25.5,
+ "still_at_s": 11.3,
+ "crashes_in_window_s": {
+  "authors": [],
+  "choice_hn_frompost": [
+   11.03,
+   25.32
+  ],
+  "wise_0.15": []
+ },
+ "crashes_whole_run_s": {
+  "authors": [],
+  "choice_hn_frompost": [
+   11.03,
+   25.32,
+   35.97,
+   56.68
+  ],
+  "wise_0.15": []
+ },
+ "frames": 555,
+ "gif_colors": 32
+}
