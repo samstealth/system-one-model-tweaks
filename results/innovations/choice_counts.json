@@ -1,0 +1,36 @@
+{
+ "note": "innovations/build_choice_data.py output counts (choice/counts.json), rows per source and split",
+ "totals": {
+  "train": 232541,
+  "test": 13264
+ },
+ "sources": {
+  "banking77": {
+   "train": 10003,
+   "test": 3080
+  },
+  "clinc_oos": {
+   "train": 15250,
+   "test": 5500
+  },
+  "arc": {
+   "train": 3273,
+   "test": 1172
+  },
+  "csqa": {
+   "train": 9430,
+   "test": 1221
+  },
+  "mmlu_aux": {
+   "train": 96876
+  },
+  "glaive_fc": {
+   "train": 58871,
+   "test": 1129
+  },
+  "labeled": {
+   "test": 1162,
+   "train": 38838
+  }
+ }
+}

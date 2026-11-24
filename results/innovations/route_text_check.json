@@ -1,0 +1,177 @@
+{
+ "note": "examples/route_text.py checked on Modal: 1x NVIDIA L40S, debian_slim + torch 2.5.1 + transformers 4.57.6 + accelerate, backbone = Qwen/Qwen3-8B snapshot rev b968826d9c46dd6066d109eabc6255188de91218 (the one the vLLM vectors used), bf16. Comparison against examples/data/sample_decisions.npz (vLLM 0.11 pooling vectors).",
+ "gpu": "L40S",
+ "transformers": "4.57.6",
+ "torch": "2.5.1",
+ "dtype": "bfloat16",
+ "vs_vllm_vectors": {
+  "states": {
+   "n": 60,
+   "mean": 0.9999147057533264,
+   "min": 0.9997990131378174
+  },
+  "options": {
+   "n": 600,
+   "mean": 0.9999680519104004,
+   "min": 0.9998226761817932
+  },
+  "clm_head_picks": {
+   "n": 60,
+   "agree": 59,
+   "correct_with_vllm_vectors": 29,
+   "correct_with_transformers_vectors": 30
+  }
+ },
+ "original_builtin_example": {
+  "state_text": "User request: Our nightly export job failed at 02:14 with 'disk quota exceeded' on the staging database. Find out which table grew the most since yesterday.\n\nWhich tool should the agent call next?",
+  "option_texts": [
+   "run_sql_query: Run a read-only SQL query against the staging database and return the rows.",
+   "search_logs: Search application and job logs by time range and keyword.",
+   "restart_service: Restart a named service on the staging cluster.",
+   "create_ticket: Open a ticket for the on-call engineer with a title and a description.",
+   "send_email: Send an email to a person or a mailing list.",
+   "no_tool: Answer directly without calling a tool."
+  ],
+  "heads": {
+   "CLM-8B": {
+    "pick": "search_logs",
+    "probabilities": {
+     "run_sql_query": 0.16349254548549652,
+     "search_logs": 0.6150873303413391,
+     "restart_service": 0.058019958436489105,
+     "create_ticket": 0.07680797576904297,
+     "send_email": 0.000473514839541167,
+     "no_tool": 0.08611869812011719
+    }
+   },
+   "s1_tweaks_v0.1": {
+    "pick": "search_logs",
+    "probabilities": {
+     "run_sql_query": 0.16971701383590698,
+     "search_logs": 0.6861390471458435,
+     "restart_service": 0.0428360290825367,
+     "create_ticket": 0.06683753430843353,
+     "send_email": 0.0002196373388869688,
+     "no_tool": 0.034250691533088684
+    }
+   }
+  }
+ },
+ "candidate_examples": {
+  "note": "same six options and instructions as the built-in example; heads CLM-8B (downloaded), s1_tweaks_v0.1, s1_router_v0.1",
+  "A": {
+   "expected": "run_sql_query",
+   "heads": {
+    "CLM-8B": {
+     "pick": "run_sql_query",
+     "probs": {
+      "run_sql_query": 0.3926,
+      "search_logs": 0.3659,
+      "restart_service": 0.0389,
+      "create_ticket": 0.1495,
+      "send_email": 0.004,
+      "no_tool": 0.0491
+     }
+    },
+    "s1_tweaks_v0.1": {
+     "pick": "run_sql_query",
+     "probs": {
+      "run_sql_query": 0.4706,
+      "search_logs": 0.3594,
+      "restart_service": 0.0285,
+      "create_ticket": 0.1218,
+      "send_email": 0.002,
+      "no_tool": 0.0177
+     }
+    },
+    "s1_router_v0.1": {
+     "pick": "run_sql_query",
+     "probs": {
+      "run_sql_query": 0.88,
+      "search_logs": 0.1159,
+      "restart_service": 0.0017,
+      "create_ticket": 0.0024,
+      "send_email": 0.0,
+      "no_tool": 0.0
+     }
+    }
+   }
+  },
+  "B": {
+   "expected": "search_logs",
+   "heads": {
+    "CLM-8B": {
+     "pick": "restart_service",
+     "probs": {
+      "run_sql_query": 0.0179,
+      "search_logs": 0.4192,
+      "restart_service": 0.4726,
+      "create_ticket": 0.0795,
+      "send_email": 0.0021,
+      "no_tool": 0.0087
+     }
+    },
+    "s1_tweaks_v0.1": {
+     "pick": "restart_service",
+     "probs": {
+      "run_sql_query": 0.0178,
+      "search_logs": 0.4315,
+      "restart_service": 0.4784,
+      "create_ticket": 0.0673,
+      "send_email": 0.0013,
+      "no_tool": 0.0037
+     }
+    },
+    "s1_router_v0.1": {
+     "pick": "search_logs",
+     "probs": {
+      "run_sql_query": 0.0317,
+      "search_logs": 0.4885,
+      "restart_service": 0.4709,
+      "create_ticket": 0.0088,
+      "send_email": 0.0,
+      "no_tool": 0.0
+     }
+    }
+   }
+  },
+  "C": {
+   "expected": "create_ticket",
+   "heads": {
+    "CLM-8B": {
+     "pick": "create_ticket",
+     "probs": {
+      "run_sql_query": 0.0004,
+      "search_logs": 0.0096,
+      "restart_service": 0.0596,
+      "create_ticket": 0.722,
+      "send_email": 0.0042,
+      "no_tool": 0.2042
+     }
+    },
+    "s1_tweaks_v0.1": {
+     "pick": "create_ticket",
+     "probs": {
+      "run_sql_query": 0.0003,
+      "search_logs": 0.0074,
+      "restart_service": 0.0484,
+      "create_ticket": 0.8182,
+      "send_email": 0.0028,
+      "no_tool": 0.1229
+     }
+    },
+    "s1_router_v0.1": {
+     "pick": "create_ticket",
+     "probs": {
+      "run_sql_query": 0.0,
+      "search_logs": 0.0044,
+      "restart_service": 0.0235,
+      "create_ticket": 0.9557,
+      "send_email": 0.0001,
+      "no_tool": 0.0162
+     }
+    }
+   }
+  }
+ }
+}
