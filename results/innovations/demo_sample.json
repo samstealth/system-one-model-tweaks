@@ -1,0 +1,83 @@
+{
+ "note": "examples/demo_cpu.py on examples/data/sample_decisions.{npz,jsonl} (60 decisions, 12 per source), CPU, heads only; --clm-head = the authors' post-trained head (same sha256 as CLM_v0.1-8B.pt), --head = the release files",
+ "heads": {
+  "CLM-8B": {
+   "banking77": {
+    "n": 12,
+    "hits": 2
+   },
+   "clinc_oos": {
+    "n": 12,
+    "hits": 5
+   },
+   "glaive_fc": {
+    "n": 12,
+    "hits": 10
+   },
+   "heldout_bfcl": {
+    "n": 12,
+    "hits": 7
+   },
+   "heldout_massive": {
+    "n": 12,
+    "hits": 5
+   },
+   "all": {
+    "n": 60,
+    "hits": 29
+   }
+  },
+  "s1_tweaks_v0.1": {
+   "banking77": {
+    "n": 12,
+    "hits": 3
+   },
+   "clinc_oos": {
+    "n": 12,
+    "hits": 6
+   },
+   "glaive_fc": {
+    "n": 12,
+    "hits": 11
+   },
+   "heldout_bfcl": {
+    "n": 12,
+    "hits": 8
+   },
+   "heldout_massive": {
+    "n": 12,
+    "hits": 6
+   },
+   "all": {
+    "n": 60,
+    "hits": 34
+   }
+  },
+  "s1_router_v0.1": {
+   "banking77": {
+    "n": 12,
+    "hits": 11
+   },
+   "clinc_oos": {
+    "n": 12,
+    "hits": 10
+   },
+   "glaive_fc": {
+    "n": 12,
+    "hits": 12
+   },
+   "heldout_bfcl": {
+    "n": 12,
+    "hits": 9
+   },
+   "heldout_massive": {
+    "n": 12,
+    "hits": 5
+   },
+   "all": {
+    "n": 60,
+    "hits": 47
+   }
+  }
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "cfg": {
+  "in_dim": 4096,
+  "width": 768,
+  "depth": 3,
+  "proj": 512,
+  "tower": "separate",
+  "adapter_rank": 64,
+  "matryoshka": []
+ },
+ "params": 8264704,
+ "lr": 0.002309401076758503,
+ "batch": 1024,
+ "chunks": 12,
+ "device": "cpu",
+ "hard_negs": false,
+ "step": 3000,
+ "loss": 1.3731,
+ "minutes": 11.34,
+ "gen_loss": 1.5592,
+ "gen_top1": 0.591,
+ "tricky_top1": 0.3491,
+ "tricky_n": 19136,
+ "head_latency_ms_cpu_1000_actions": 0.383
+}

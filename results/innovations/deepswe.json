@@ -1,0 +1,32 @@
+{
+ "note": "pipeline/run_deepswe.py, 38 held-out tasks x 4 rollouts; random 0.737, oracle 0.895; count = tasks solved by best-of-4 pick",
+ "seeds": [
+  1234,
+  1,
+  2,
+  3,
+  4
+ ],
+ "heads": {
+  "authors_post": {
+   "solved": [
+    31,
+    32,
+    30,
+    31,
+    31
+   ],
+   "mean": 31.0
+  },
+  "wise_0.15": {
+   "solved": [
+    30,
+    32,
+    30,
+    31,
+    31
+   ],
+   "mean": 30.8
+  }
+ }
+}

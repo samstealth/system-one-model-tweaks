@@ -1,0 +1,194 @@
+{
+ "note": "scripts/data_checks.py: counts read from the built data files. chance = mean of 1 / number of options. multi_turn = states with an ASSISTANT turn and an end-of-text marker.",
+ "date": "2026-11-24",
+ "choice": {
+  "train": {
+   "banking77": {
+    "rows": 10003,
+    "options": {
+     "10": 10003
+    },
+    "chance": 0.1
+   },
+   "clinc_oos": {
+    "rows": 15250,
+    "options": {
+     "10": 15250
+    },
+    "chance": 0.1
+   },
+   "arc": {
+    "rows": 3273,
+    "options": {
+     "3": 7,
+     "4": 3261,
+     "5": 5
+    },
+    "chance": 0.2501
+   },
+   "csqa": {
+    "rows": 9430,
+    "options": {
+     "5": 9430
+    },
+    "chance": 0.2
+   },
+   "mmlu_aux": {
+    "rows": 96876,
+    "options": {
+     "4": 96876
+    },
+    "chance": 0.25
+   },
+   "glaive_fc": {
+    "rows": 58871,
+    "options": {
+     "10": 58871
+    },
+    "multi_turn": 23618,
+    "chance": 0.1
+   },
+   "labeled": {
+    "rows": 38838,
+    "options": {
+     "3": 3,
+     "4": 35519,
+     "5": 3316
+    },
+    "chance": 0.2457
+   }
+  },
+  "test": {
+   "banking77": {
+    "rows": 3080,
+    "options": {
+     "10": 3080
+    },
+    "chance": 0.1
+   },
+   "clinc_oos": {
+    "rows": 5500,
+    "options": {
+     "10": 5500
+    },
+    "chance": 0.1
+   },
+   "arc": {
+    "rows": 1172,
+    "options": {
+     "3": 4,
+     "4": 1165,
+     "5": 3
+    },
+    "chance": 0.2502
+   },
+   "csqa": {
+    "rows": 1221,
+    "options": {
+     "5": 1221
+    },
+    "chance": 0.2
+   },
+   "glaive_fc": {
+    "rows": 1129,
+    "options": {
+     "10": 1129
+    },
+    "multi_turn": 510,
+    "chance": 0.1
+   },
+   "labeled": {
+    "rows": 1162,
+    "options": {
+     "4": 1065,
+     "5": 97
+    },
+    "chance": 0.2458
+   }
+  }
+ },
+ "heldout": {
+  "bfcl": {
+   "rows": 1252,
+   "options": {
+    "10": 1252
+   },
+   "chance": 0.1
+  },
+  "massive": {
+   "rows": 2951,
+   "options": {
+    "10": 2951
+   },
+   "chance": 0.1
+  },
+  "hwu64": {
+   "rows": 1072,
+   "options": {
+    "10": 1072
+   },
+   "chance": 0.1
+  },
+  "bitext": {
+   "rows": 2000,
+   "options": {
+    "10": 2000
+   },
+   "chance": 0.1
+  },
+  "sciq": {
+   "rows": 1000,
+   "options": {
+    "4": 1000
+   },
+   "chance": 0.25
+  },
+  "qasc": {
+   "rows": 923,
+   "options": {
+    "8": 923
+   },
+   "chance": 0.125
+  },
+  "mmlu": {
+   "rows": 1997,
+   "options": {
+    "4": 1997
+   },
+   "chance": 0.25
+  },
+  "medmcqa": {
+   "rows": 1999,
+   "options": {
+    "4": 1999
+   },
+   "chance": 0.25
+  }
+ },
+ "qa_test_slice_in_replay_chunks": {
+  "test_pairs": 11998,
+  "test_docs": 1500,
+  "repo": "Contrastive-LM/CLM-v0.1-Pretrain-Nemotron",
+  "revision": "05ca7d05c043350326c5e86c589b9542962747b4",
+  "chunks": {
+   "shard_00/0": {
+    "replayed": true,
+    "pairs": 256,
+    "docs": 32
+   },
+   "shard_00/1": {
+    "replayed": true,
+    "pairs": 168,
+    "docs": 21
+   },
+   "shard_00/2": {
+    "replayed": false,
+    "pairs": 160,
+    "docs": 20
+   }
+  },
+  "pairs_in_replayed_chunks": 424,
+  "docs_in_replayed_chunks": 53,
+  "share_of_test_pairs": 0.0353
+ }
+}

@@ -1,0 +1,64 @@
+name: Result replication
+description: You reran one of our experiments. Tell us what you got, whether it matches or not.
+title: "Replication: "
+labels: ["replication"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Both outcomes help. A matching rerun makes a number more trustworthy. A mismatch tells us where to look.
+        Commands for every experiment are in docs/REPRODUCE.md.
+  - type: input
+    id: claim
+    attributes:
+      label: The number you reran
+      description: Quote it and say where it is written.
+      placeholder: "BFCL tool choice 68.7% for S1-Tweaks v0.1 (wise_0.15), innovations/RESULTS.md section 7"
+    validations:
+      required: true
+  - type: input
+    id: result-file
+    attributes:
+      label: The result file it comes from
+      placeholder: "results/innovations/heldout.json"
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      options:
+        - It matches
+        - It is close, within what I would call noise
+        - It does not match
+        - I could not run it
+    validations:
+      required: true
+  - type: textarea
+    id: yours
+    attributes:
+      label: What you measured
+      description: Your number, the number of seeds or test rows, and your result.json if you have one.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Exact commands
+      description: Every step from data to the final number. Say where you changed anything from docs/REPRODUCE.md.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Hardware and versions
+      description: GPU type or CPU, Python, torch, vLLM and transformers versions where they apply, and the commit you ran.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Wall-clock time, cost, and anything in the docs that was unclear or wrong.
