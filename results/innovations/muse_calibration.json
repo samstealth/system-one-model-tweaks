@@ -1,0 +1,97 @@
+{
+ "date": "2026-11-24",
+ "script": "innovations/muse_calibration.py",
+ "sample": {
+  "pairs": 95857,
+  "docs": 11984,
+  "shards": 6,
+  "selection": "crc32(doc_id) % 650 == 0 in each of the 6 shards of jackyk02/nemotron-cc-v2.1-hq-dqa-qwen3-tokens",
+  "negatives": 10000,
+  "max_state_tokens": 2047
+ },
+ "setup": {
+  "model": "meta-models/Muse-Glimmer-30B",
+  "gpu": "H100",
+  "vllm": "0.34.0",
+  "transformers": "5.22.2",
+  "dim": 6656,
+  "runner": "pooling, LAST token, normalized; one llm.embed call per text type"
+ },
+ "measured": {
+  "seconds": {
+   "load_model": 125.5,
+   "tokenize": 103.7,
+   "embed_states": 1112.4,
+   "embed_answers": 113.9,
+   "embed_negatives": 9.5
+  },
+  "tokens_muse_tokenizer": {
+   "states": {
+    "mean": 734.9,
+    "median": 704.0,
+    "p95": 1301.0,
+    "max": 2047,
+    "total": 70449593
+   },
+   "answers": {
+    "mean": 9.6,
+    "median": 8.0,
+    "p95": 23.0,
+    "max": 405,
+    "total": 917253
+   },
+   "negatives": {
+    "mean": 6.7,
+    "median": 6.0,
+    "p95": 13.0,
+    "max": 53,
+    "total": 66824
+   }
+  },
+  "pairs_per_s": 78.2,
+  "state_tokens_per_s": 63331,
+  "negatives_per_s": 1053
+ },
+ "billing": {
+  "before_usd": 68.09,
+  "after_sample_usd": 68.56,
+  "after_embed_usd": 70.97,
+  "sample_step_usd": 0.47,
+  "embed_step_usd": 2.41,
+  "all_in_container_rate_usd_per_h": 5.92,
+  "rate_basis": "embed-step bill divided by load+tokenize+embed wall time (excludes image build and container start, so slightly high)"
+ },
+ "arithmetic": {
+  "h100_hours_per_million_pairs": 3.55,
+  "usd_per_million_pairs": 21.0
+ },
+ "projections": {
+  "all_62.45M_pairs_plus_26.7M_negatives": {
+   "h100_hours": 229.0,
+   "usd": 1356
+  },
+  "pairs_only_62.45M": {
+   "h100_hours": 221.9,
+   "usd": 1314
+  },
+  "negatives_only_26.7M": {
+   "h100_hours": 7.0,
+   "usd": 42
+  },
+  "subset_5M_pairs": {
+   "h100_hours": 17.8,
+   "usd": 105
+  },
+  "subset_10M_pairs": {
+   "h100_hours": 35.5,
+   "usd": 210
+  }
+ },
+ "storage_fp16": {
+  "pairs_q_and_a_TB": 1.663,
+  "negatives_TB": 0.355,
+  "total_TB": 2.02,
+  "for_comparison_qwen3_8b_4096d_total_TB": 1.24
+ },
+ "not_included": "head training (~$10-25), CPU tokenization at scale (here 104 s per 96k pairs on 8 vCPUs, can overlap with the GPU), container starts (~2 min model load each), re-runs"
+}
