@@ -61,7 +61,7 @@ Only day totals were recorded, from Modal's billing page.
 | Day 3, 23 Nov (`day3_2026-11-23.md`) | held-out test, two more blends, T-Rex over 15 seeds, four more DeepSWE seeds, AWQ accuracy, demo sample | about $5 (the meter read $68.09 after the last job) |
 | All three | | about $68 |
 
-<!-- PENDING: cost and wall-clock per Modal job. Only the day totals above were recorded. -->
+Cost and wall-clock per Modal job were not recorded. Only the totals per round above were.
 
 The CPU steps cost nothing.
 
@@ -432,7 +432,7 @@ Three things to know when you compare your run with ours:
   that the planner had labelled unsafe and were replaced, and emergency moves. The per-seed files in
   `results/innovations/trex_15seeds/` and `trex_per_seed/` hold them one by one.
 
-<!-- PENDING: wall-clock and cost of one T-Rex run. Neither was recorded. -->
+The wall-clock and the cost of a single T-Rex run were not recorded.
 
 ### 2.8 Day 2: blends, distillation, anchor, agent data
 

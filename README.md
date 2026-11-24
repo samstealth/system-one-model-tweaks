@@ -381,7 +381,7 @@ innovations/           the five experiments: heads, trainer, evals, data builder
   interpolate.py       the blend
 examples/              demo_cpu.py (no GPU), route_text.py (GPU), data/ (60 sample decisions)
 results/innovations/   one JSON per run, plus the notes of each round
-assets/  scripts/      figures, rebuilt from the result files by scripts/make_figures.py; data_checks.py counts the data sets
+assets/  scripts/      figures, and make_figures.py that rebuilds them from the result files
 tests/                 CPU tests on synthetic vectors
 docs/                  REPRODUCE.md (commands and costs), BASELINE.md (the Vizuara README)
 pipeline/              the imported Vizuara baseline: trainer, game and test runners
