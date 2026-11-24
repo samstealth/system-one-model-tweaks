@@ -39,6 +39,18 @@ def sample_paths(data):
     return base + ".npz", base + ".jsonl"
 
 
+def shown_path(path):
+    """The path as printed: relative to the repo root when the file is inside it, with forward slashes.
+
+    The default --data is an absolute path, and an absolute path in pasted output shows the user's home folder."""
+    root = os.path.dirname(HERE)
+    try:
+        rel = os.path.relpath(os.path.abspath(path), root)
+    except ValueError:      # another drive on Windows
+        return path
+    return path if rel.startswith("..") else rel.replace(os.sep, "/")
+
+
 def load_sample(data=DATA_DIR):
     npz, jsonl = sample_paths(data)
     missing = [p for p in (npz, jsonl) if not os.path.isfile(p)]
@@ -172,7 +184,7 @@ def main(argv=None):
     a = p.parse_args(argv)
 
     q, opts, n_opts, gold, rows = load_sample(a.data)
-    print(f"Loaded {len(rows)} decisions from {sample_paths(a.data)[0]} (vectors of size {q.shape[1]}, up to {opts.shape[1]} options each).")
+    print(f"Loaded {len(rows)} decisions from {shown_path(sample_paths(a.data)[0])} (vectors of size {q.shape[1]}, up to {opts.shape[1]} options each).")
     if any(r.get("synthetic") or str(r["source"]).startswith("synthetic") for r in rows):
         print("NOTE: this is a SYNTHETIC sample (random vectors, not Qwen3-8B output). The accuracies below mean nothing.")
 

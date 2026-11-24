@@ -182,42 +182,59 @@ It needs Python 3.10 or newer. The repo ships 60 real decisions with their Qwen3
 
 ```text
 [...]
+--- decision 2 of 60, source: glaive_fc --------------------
+State:
+    User request: I have 1000 Euros. How much would it be in US dollars?
+
+    Which tool should the agent call next?
+
+   #  option                                              CLM-8B   S1-Tweaks v0.1   S1-Router v0.1
+   0  find_closest_store: Find the closest sto...           2.6%             1.4%             0.0%
+   1  no_tool: Answer directly without calling...          25.9%             8.3%             0.0%
+   2  calculate_loan_amortization: Calculate t...          12.9%             8.7%             0.0%
+   3  get_current_news: Get the latest news ba...           9.3%             3.9%             0.0%
+   4  track_fitness_progress: Track and monito...           0.0%             0.0%             0.0%
+   5  convert_currency: Convert curre...  <- gold          27.5% *          63.5% *         100.0% *
+   6  calculate_loan_payments: Calculate month...           6.4%             5.0%             0.0%
+   7  get_temperature: Get the current tempera...           8.0%             5.6%             0.0%
+   8  generate_id: Generate a unique identifier             0.7%             0.7%             0.0%
+   9  calculate_carbon_footprint: Calculate th...           6.8%             2.9%             0.0%
+  * = that head's pick.   CLM-8B: right   S1-Tweaks v0.1: right   S1-Router v0.1: right
+
 --- decision 13 of 60, source: banking77 --------------------
 State:
     Customer message: still waiting on that card
 
     Which team should handle this ticket?
 
-   #  option                                                                                CLM-8B
-   0  pending cash withdrawal: Route the ticket to pending cash withdrawal.                   2.0%
-   1  cash withdrawal charge: Route the ticket to cash withdrawal charge.                     7.6%
-   2  getting spare card: Route the ticket to getting spare card.                             7.5%
-   3  unable to verify identity: Route the ticket to unable to verify identity.               1.2%
-   4  card arrival: Route the ticket to card arrival.  <- gold                                4.0%
-   5  lost or stolen card: Route the ticket to lost or stolen card.                           4.6%
-   6  card swallowed: Route the ticket to card swallowed.                                     0.5%
-   7  top up by cash or cheque: Route the ticket to top up by cash or cheque.                56.5% *
-   8  cancel transfer: Route the ticket to cancel transfer.                                  13.0%
-   9  verify top up: Route the ticket to verify top up.                                       3.1%
-  * = that head's pick.   CLM-8B: wrong
+   #  option                                              CLM-8B   S1-Tweaks v0.1   S1-Router v0.1
+   0  pending cash withdrawal: Route the ticke...           2.0%             2.2%             0.2%
+   1  cash withdrawal charge: Route the ticket...           7.6%             7.4%             0.1%
+   2  getting spare card: Route the ticket to ...           7.5%             8.1%            30.8%
+   3  unable to verify identity: Route the tic...           1.2%             1.1%             0.0%
+   4  card arrival: Route the ticket ...  <- gold           4.0%             5.7%            65.6% *
+   5  lost or stolen card: Route the ticket to...           4.6%             4.5%             0.5%
+   6  card swallowed: Route the ticket to card...           0.5%             0.5%             0.8%
+   7  top up by cash or cheque: Route the tick...          56.5% *          54.0% *           1.0%
+   8  cancel transfer: Route the ticket to can...          13.0%            13.3%             0.4%
+   9  verify top up: Route the ticket to verif...           3.1%             3.3%             0.5%
+  * = that head's pick.   CLM-8B: wrong   S1-Tweaks v0.1: wrong   S1-Router v0.1: right
 [...]
 Top-1 accuracy on this sample (60 decisions). Chance is the mean of 1 / number of options.
-  source               n   chance           CLM-8B
-  banking77           12    10.0%            16.7%
-  clinc_oos           12    10.0%            41.7%
-  glaive_fc           12    10.0%            83.3%
-  heldout_bfcl        12    10.0%            58.3%
-  heldout_massive     12    10.0%            41.7%
-  all                 60    10.0%            48.3%
+  source               n   chance           CLM-8B   S1-Tweaks v0.1   S1-Router v0.1
+  banking77           12    10.0%            16.7%            25.0%            91.7%
+  clinc_oos           12    10.0%            41.7%            50.0%            83.3%
+  glaive_fc           12    10.0%            83.3%            91.7%           100.0%
+  heldout_bfcl        12    10.0%            58.3%            66.7%            75.0%
+  heldout_massive     12    10.0%            41.7%            50.0%            41.7%
+  all                 60    10.0%            48.3%            56.7%            78.3%
 
-Scored 60 decisions with 1 head in 0.06 s on CPU.
+Scored 60 decisions with 3 heads in 0.39 s on CPU.
 Only the heads ran here. The backbone vectors were computed in advance.
 A sample this small gives rough numbers. Measured results and their limits: innovations/RESULTS.md
 ```
 
-<!-- PENDING: the block above is a real run from before the v0.1 release was live, so it has the CLM-8B column only. Once the release is live, replace it with the three-column output (CLM-8B, S1-Tweaks v0.1, S1-Router v0.1) of python examples/demo_cpu.py and delete the next sentence. -->
-
-This capture is from before the v0.1 release went live, so it has CLM-8B's column only: 29 of 60. With the release live you get one column per head. On this sample S1-Tweaks v0.1 gets 34 of 60 and S1-Router v0.1 gets 47 ([`demo_sample.json`](results/innovations/demo_sample.json)). Sixty decisions give rough numbers, so quote the scoreboard and not this. `python examples/demo_cpu.py --show 6 --disagreements` prints the decisions where the heads differ.
+This is the real output with the two release files, kept in [`demo_output.txt`](results/innovations/demo_output.txt). The second decision shows the trade in one table: the blend moves a little toward the right team and still picks the wrong one, and the fully post-trained head gets it. On this sample CLM-8B gets 29 of 60, S1-Tweaks v0.1 gets 34 and S1-Router v0.1 gets 47 ([`demo_sample.json`](results/innovations/demo_sample.json)). Sixty decisions give rough numbers, so quote the scoreboard and not this. `python examples/demo_cpu.py --show 6 --disagreements` prints the decisions where the heads differ.
 
 ### 2. Use a head
 
@@ -261,7 +278,7 @@ mine = blend("clm", "s1-router", 0.2)        # your own point on the trade-off, 
 mine.save("my_head.pt")                      # CLM's layout, ready for clm-serve --ckpt
 ```
 
-Run it from the repo root. `blend("clm", "s1-router", 0.15)` is the S1-Tweaks v0.1 recipe. Until the v0.1 release is live, only `"clm"` and local files load.
+Run it from the repo root. `blend("clm", "s1-router", 0.15)` is the S1-Tweaks v0.1 recipe.
 
 **Text in, with a GPU.** [`examples/route_text.py`](examples/route_text.py) embeds text with Qwen/Qwen3-8B through transformers (a GPU with 24 GB or more) and scores it. It is for trying things out. For serving, use the engine.
 

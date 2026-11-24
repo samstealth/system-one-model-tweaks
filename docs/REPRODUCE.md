@@ -109,8 +109,8 @@ from Hugging Face.
   v0.1 gets 47, with the hits per source for each head.
 - `python examples/demo_cpu.py --json my_demo.json` writes the hits per head and per source of your
   run in the same layout, so you can compare the two files.
-- Until the v0.1 release is live, the demo cannot download the two S1 heads. It says so and runs
-  with CLM's head alone.
+- **recorded** (`results/innovations/demo_output.txt`): the full output with all three heads.
+- If a release file cannot be downloaded, the demo says so and runs with the heads it has.
 
 A sample of 60 is for trying things, not for quoting. The sample was exported with
 `modal run innovations/export_demo_sample.py` (**recorded**). That needs the vectors on the Modal
@@ -474,7 +474,7 @@ modal run innovations/modal_embed.py --job agent --src /data/agent/vec_4000   # 
 | `post_agent_mix_nodistill` | the same chunks, no distillation | 3.07 |
 | `wise_agent_0.5` | no training: `interpolate --alpha 0.5` between the authors' post head and `post_agent_mix` | none |
 
-<!-- PENDING: the replay fraction of the two agent-mix runs was not recorded. The table assumes the 0.4 of the other runs. -->
+The replay fraction of the two agent-mix runs was 0.4. It was passed on the launch command line (`--replay-frac 0.4`) and is not stored in the runs' `result.json`, so the command line is its only record.
 
 ### 2.9 DeepSWE
 
@@ -536,8 +536,8 @@ Step 3 also prints the tricky and general Q&A scores if the Q&A slice is on the 
 (`--job qa --backbone qwen3-8b`, section 2.3). Without it, only the choice scores are printed.
 
 `interpolate` reads both files with `torch.load(weights_only=True)`. Its `--a` and `--b` also take
-the names `clm`, `s1-tweaks` and `s1-router`, which download the public files. So once the release
-is live, `python -m innovations.interpolate --a clm --b s1-router --alpha 0.15 --out my_blend.pt`
+the names `clm`, `s1-tweaks` and `s1-router`, which download the public files. So
+`python -m innovations.interpolate --a clm --b s1-router --alpha 0.15 --out my_blend.pt`
 makes the blend with no Modal volume.
 
 What to expect:
@@ -545,7 +545,7 @@ What to expect:
 - **Your files will not have the published sha256.** Post-training on a GPU does not repeat bit for
   bit, and the checkpoint container differs between torch versions. Compare weights and scores, not
   hashes.
-- **The blend itself can be checked exactly once the release is live.** Download the released
+- **The blend itself can be checked exactly.** Download the released
   S1-Router, blend it with CLM's head at 0.15, and compare with the released S1-Tweaks:
 
   ```bash
@@ -563,7 +563,8 @@ What to expect:
   EOF
   ```
 
-  <!-- PENDING: run this against the live release and write the printed number here. The release was not live when this guide was written. -->
+  Run on 24 November 2026 on the files that became the release, with the same sha256 as the pinned ones, it
+  printed 0.0 ([`blend_check.json`](../results/innovations/blend_check.json)).
 - **Scores.** Score your heads as in section 4 and compare with `results/innovations/heldout.json`,
   `post_choice_hn_frompost.json` and `wise_0.15.json`.
 
