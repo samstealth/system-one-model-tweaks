@@ -14,7 +14,6 @@ By:       Vizuara AI Labs
 
 Imported from that repository:
   - pipeline/ (data staging, the baseline trainer, agent data, embedding, testing, game rendering)
-  - site/ (the workshop deck)
   - the baseline result files in results/: results.json, scores_post2.json, pre_log.jsonl,
     mid_log.jsonl, post_log.jsonl
   - the baseline README, which now lives at docs/BASELINE.md
@@ -25,7 +24,7 @@ Changes made here to the imported files:
     option, the shield-off pass now runs for every model.
   - pipeline/embed_agent.py: the CLM_AGENT_LIMIT setting embeds only the first N pairs of each
     config, into its own folder.
-  - The baseline README was moved to docs/BASELINE.md. Edits to it are in the git history.
+  - The baseline README was moved to docs/BASELINE.md, with a short note added above its title.
 
 The two changed pipeline files carry a notice of the change in their first lines.
 
@@ -33,8 +32,11 @@ Added in this repository: everything in innovations/, examples/, scripts/, tests
 .github/ and results/innovations/, plus the top-level README.md, MODEL_CARD.md and
 docs/REPRODUCE.md.
 
-This project is not affiliated with, sponsored by or endorsed by Vizuara AI Labs. Section 5
-lists the material in site/ that the Apache 2.0 licence does not cover.
+Not imported: site/, the workshop deck. It holds third-party images (a photo and a book cover)
+and the Vizuara name, logo and host photo, which the Apache 2.0 licence does not cover. The
+deck is in the Vizuara repository and at https://system-one-workshop.vercel.app .
+
+This project is not affiliated with, sponsored by or endorsed by Vizuara AI Labs.
 
 
 2. CLM-v0.1-8B (Contrastive Language Models)
@@ -149,23 +151,3 @@ Credit for the three Creative Commons sources:
 Changes made to these rows: the state and option texts in the sample were rewritten into this
 repository's templates by innovations/build_choice_data.py and
 innovations/build_heldout_choice.py.
-
-
-5. Third-party material in site/
---------------------------------
-
-The workshop deck in site/ was imported as it is from the Vizuara repository. It holds material
-that the Apache 2.0 licence of that repository, and of this one, does not cover:
-
-  - site/img/kahneman.jpg: a photo of Daniel Kahneman by Eirik Solheim / NRKbeta.no, licensed
-    under Creative Commons Attribution-Share Alike 3.0 Norway
-    (http://creativecommons.org/licenses/by-sa/3.0/no/). The credit and the licence are taken
-    from the file's own metadata.
-  - site/img/book.jpg: the cover of the book "Thinking, Fast and Slow". The rights stay with
-    its publisher.
-  - site/img/vizuara-logo.png, site/img/raj.jpg (a photo of the workshop host) and the Vizuara
-    name: they belong to Vizuara AI Labs and to the person shown. This repository does not
-    license them, and Apache 2.0 grants no trademark rights.
-
-The deck also links to Vizuara's own site on every slide. Those links are theirs. They are not
-an offer or an endorsement by this project.

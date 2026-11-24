@@ -8,6 +8,10 @@
 
 We post-trained an open decision model to pick tools and routes far better, and it forgot how to play a dinosaur game. Blending 15% of the new weights into the old ones got the game back with its safety shield on: 14 of 15 courses survived in the check run, against 15 of 15 for the original (19 of 20 against 20 of 20 over both runs). The blend kept gains of 1.8 to 5.4 points on 6 of 8 held-out tests that we built from public sources. With the shield off, the original still plays far better.
 
+<p align="center"><img src="assets/media/trex-three-heads.gif" alt="Animation of three recordings of the same T-Rex course, stacked. Top, CLM-8B: the runner clears every obstacle. Middle, S1-Router v0.1, our post-trained head with no blend: the runner hits a cactus after four seconds, the word CRASHED appears, and it crashes a second time near the end. Bottom, S1-Tweaks v0.1, the 15% blend: the runner clears every obstacle." width="520"></p>
+
+<sub>One recorded course (seed 0) with the safety shield on, 18.5 seconds. Top: CLM-8B. Middle: S1-Router v0.1, our post-trained head before any blend. Bottom: S1-Tweaks v0.1, the 15% blend. This is one run, not the result: in a later run S1-Tweaks v0.1 lost this same course once, its one loss in 20 games. Drawn from the recorded frames by [`render_trex3.py`](innovations/render_trex3.py), with crash times in [`trex-three-heads.json`](assets/media/trex-three-heads.json).</sub>
+
 This repo is the lab notebook: two heads you can download, five experiments, every measured number tied to a result file or a dated run note, and the failures left in. The five ideas come from the last chapter of Vizuara AI Labs' System One workshop. This is an independent project. It is not an official CLM release and it is not affiliated with Vizuara AI Labs.
 
 ```bash
@@ -106,7 +110,7 @@ The [workshop this repo builds on](https://github.com/VizuaraAI/system-one-from-
 
 **Round 1. Teach it to choose.** A System One model is asked "which of these options?". So we built training rows shaped like that question: one situation, up to 10 options, and the wrong options of the same question as the hard negatives. That gave 233k rows built from public tool-calling, routing and multiple-choice sets. About 39k of them are a label-reading set: one random option carries a tag such as Correct or Safe, the others carry the opposite tag, and the state asks for the tagged one. It was meant to teach the kind of label reading that T-Rex needs. We post-trained CLM-8B's head on all of it for 400 steps, with 40% of every batch replaying CLM's own Q&A data so it would not forget that. It worked. On test rows from the same sources, tool choice went from 56.0% to 97.5%, ticket routing from 22.1% to 82.8% and intent routing from 29.0% to 85.7%. This head is now S1-Router v0.1.
 
-**Then we ran the dinosaur.** CLM ships a real-time benchmark: Chrome's offline dinosaur game, 60 seconds per course, over 3,000 decisions per course. CLM-8B survived 5 of 5 courses. Our new head survived 0 of 5 and died 17 times. The label-reading rows did not save it: the head got better at reading tags (32.9% to 51.9%, chance 24.6%) and still lost the game.
+**Then we ran the dinosaur.** CLM ships a real-time benchmark: Chrome's offline dinosaur game, 60 seconds per course, over 3,000 decisions per course. CLM-8B survived 5 of 5 courses. Our new head survived 0 of 5 and died 17 times. The clip at the top of this page is one of those courses. The label-reading rows did not save it: the head got better at reading tags (32.9% to 51.9%, chance 24.6%) and still lost the game.
 
 **The clue.** CLM's own mid-trained head, the stage before the authors' agent post-training, also survives 0 of 5. So the T-Rex skill comes from that last training stage, and our 400 steps wrote over it.
 
@@ -148,7 +152,7 @@ Held-out accuracy rises with every step of the blend. T-Rex survival does not. 1
 - **DeepSWE.** CLM's coding-verifier test, over 5 seeds, after fine-tuning each head with CLM's own script: 30.8 of 38 tasks solved against 31.0.
 - **Held-out sources.** [`build_heldout_choice.py`](innovations/build_heldout_choice.py) builds 13,194 multiple-choice test rows from eight public sets: seven sources we never trained on, plus the MMLU test split. The rows use the same option templates as the training data. Rows whose question text also appears in our training file were dropped (34 in all). OpenBookQA is left out on purpose, because the MMLU auxiliary set we trained on contains it. The gains carried over at a smaller size: tool choice +3.3, routing +1.8 to +5.4, science questions +2.6 and +3.8, and nothing on MMLU or MedMCQA. A paired test on the same rows puts all six gains above zero ([`heldout_paired.json`](results/innovations/heldout_paired.json)).
 
-**What we take from it.** In this model, a skill learned in the last training stage was erased by 400 steps on other data. Distillation did not protect it. A plain weight average kept T-Rex survival with the shield on, and not the skill with the shield off. We did not run a training recipe as light as the blend, so this does not show that blending beats light training. All three rounds cost about $69 of cloud GPU time. Every attempt is in the notes: [round 1](results/innovations/slice_run_2026-11-22.md), [round 2](results/innovations/day2_2026-11-22.md), [round 3](results/innovations/day3_2026-11-23.md).
+**What we take from it.** In this model, a skill learned in the last training stage was erased by 400 steps on other data. Distillation did not protect it. A plain weight average kept T-Rex survival with the shield on, and not the skill with the shield off. We did not run a training recipe as light as the blend, so this does not show that blending beats light training. All three rounds cost about $68 of cloud GPU time. Every attempt is in the notes: [round 1](results/innovations/slice_run_2026-11-22.md), [round 2](results/innovations/day2_2026-11-22.md), [round 3](results/innovations/day3_2026-11-23.md).
 
 ## What is a System One model?
 
@@ -271,8 +275,7 @@ python examples/route_text.py --head s1-tweaks \
 
 ### 3. Reproduce
 
-[`docs/REPRODUCE.md`](docs/REPRODUCE.md) has the command, hardware and cost of every run, and says which commands were recorded, which were rebuilt afterwards and which were rerun as a check. The head layout sweep and the head quantization run on a CPU for free. The GPU runs used [Modal](https://modal.com). Everything here, failures included, cost about $69: $42.33 for round 1, about $21 for round 2 and about $5 to $7 for round 3 (billing read $68.20 before the last runs were metered).
-<!-- PENDING: the final Modal bill, read after the last runs were metered -->
+[`docs/REPRODUCE.md`](docs/REPRODUCE.md) has the command, hardware and cost of every run, and says which commands were recorded, which were rebuilt afterwards and which were rerun as a check. The head layout sweep and the head quantization run on a CPU for free. The GPU runs used [Modal](https://modal.com). Everything here, failures included, cost about $68: $42.33 for round 1, about $21 for round 2 and about $5 for round 3. Modal's billing summary read $68.09 after the last job ([round 3 note](results/innovations/day3_2026-11-23.md)).
 
 
 ```bash
@@ -364,14 +367,14 @@ results/innovations/   one JSON per run, plus the notes of each round
 assets/  scripts/      figures, rebuilt from the result files by scripts/make_figures.py; data_checks.py counts the data sets
 tests/                 CPU tests on synthetic vectors
 docs/                  REPRODUCE.md (commands and costs), BASELINE.md (the Vizuara README)
-pipeline/  site/       the imported Vizuara baseline: trainer, game and test runners, deck
+pipeline/              the imported Vizuara baseline: trainer, game and test runners
 MODEL_CARD.md  CONTRIBUTING.md  CITATION.cff  NOTICE  LICENSE
 ```
 
 ## Credits
 
 - **CLM** is by Jacky Kwok, Hangoo Kang, Tarun Suresh, Jon Saad-Falcon, Marco Pavone, Christopher Ré and Azalia Mirhoseini, at Stanford and NVIDIA Research. The architecture, the checkpoint layout, the serving engine, the T-Rex benchmark and the weights our heads start from are theirs: [blog](https://contrastive-lm.notion.site), [code](https://github.com/Contrastive-LM/CLM), [weights](https://huggingface.co/Contrastive-LM/CLM-v0.1-8B).
-- **Vizuara AI Labs** rebuilt CLM-8B's training from scratch for a live workshop: [repo](https://github.com/VizuaraAI/system-one-from-scratch), [video](https://www.youtube.com/watch?v=vEpkc44bHVQ), [site](https://system-one-workshop.vercel.app). This repo imports that baseline (`pipeline/`, `site/`, `results/`), and the five ideas come from the workshop's last chapter. Their README is kept at [`docs/BASELINE.md`](docs/BASELINE.md).
+- **Vizuara AI Labs** rebuilt CLM-8B's training from scratch for a live workshop: [repo](https://github.com/VizuaraAI/system-one-from-scratch), [video](https://www.youtube.com/watch?v=vEpkc44bHVQ), [site](https://system-one-workshop.vercel.app). This repo imports that baseline (`pipeline/` and the baseline files in `results/`), and the five ideas come from the workshop's last chapter. The workshop deck is not copied here. It lives on their site. Their README is kept at [`docs/BASELINE.md`](docs/BASELINE.md).
 - **Qwen3-8B** by the Qwen team is the frozen backbone. It is not included here.
 - **The blend** is plain weight interpolation in the style of WiSE-FT (Wortsman et al., 2022).
 - **Training data:** Banking77, CLINC, Glaive function calling v2, ARC, CommonsenseQA, the MMLU auxiliary set, a label-reading set that we built from the ARC, CommonsenseQA and MMLU questions, CLM's published Q&A vectors and hard negatives, and ADP v2 for the agent mix.
@@ -379,7 +382,7 @@ MODEL_CARD.md  CONTRIBUTING.md  CITATION.cff  NOTICE  LICENSE
 
 ## Licence and how to cite
 
-Apache 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). S1-Tweaks v0.1 and S1-Router v0.1 are modified copies of CLM's Apache 2.0 weights, and `NOTICE` lists what was changed. Each dataset keeps its own licence, and some do not allow commercial use. `NOTICE` and [`MODEL_CARD.md`](MODEL_CARD.md) list the licence tag of every dataset. The 60 sample rows in `examples/data/` stay under the licences of their sources, which `NOTICE` lists. The imported workshop deck in `site/` holds a few third-party images and the Vizuara name and logo. Apache 2.0 does not cover those, and `NOTICE` section 5 lists them.
+Apache 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). S1-Tweaks v0.1 and S1-Router v0.1 are modified copies of CLM's Apache 2.0 weights, and `NOTICE` lists what was changed. Each dataset keeps its own licence, and some do not allow commercial use. `NOTICE` and [`MODEL_CARD.md`](MODEL_CARD.md) list the licence tag of every dataset. The 60 sample rows in `examples/data/` stay under the licences of their sources, which `NOTICE` lists.
 
 To cite this repo, use the "Cite this repository" button, which reads [`CITATION.cff`](CITATION.cff). Please also cite CLM, which all of this builds on:
 

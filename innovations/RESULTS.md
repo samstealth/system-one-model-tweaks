@@ -176,8 +176,9 @@ and 15% `post_choice_hn_frompost` (`python -m innovations.interpolate --alpha 0.
 - DeepSWE is a tie within seed noise: per seed 31, 32, 30, 31, 31 for the authors' head and 30, 32, 30, 31, 31 for ours
   (seeds 1234, 1, 2, 3, 4). Each head is first fine-tuned on DeepSWE steps with CLM's own `finetune.py`, then
   scored, so the row tests the head as a starting point for that fine-tune and not a skill of the shipped head.
-  The authors' head's five values equal the baseline's values of 6 November in `results/results.json`.
-  <!-- PENDING: whether the authors' head was rerun on DeepSWE on 22 and 23 November for all five seeds, or its values were taken from results/results.json -->
+  We reran the authors' head ourselves for all five seeds: seed 1234 on 22 November and seeds 1 to 4 on
+  23 November. The five values equal the baseline's values of 6 November in `results/results.json`, so the job
+  gives the same count for the same seed.
 - The choice tests in this table share sources with our training data. Section 7 is the held-out check.
 - Larger blends: 0.175 survives 3/5, 0.2 4/5, 0.25 4/5, 0.5 0/5 (5 seeds each). 0.15 is the largest blend that
   survived all five courses in its 5-seed run. 0.175, 0.2 and 0.25 lost two, one and one of five, which 5 seeds
@@ -246,5 +247,4 @@ authors' head in points, 95% bootstrap interval, and exact McNemar p-value.
 Open questions, all cheap to test: a blend that keeps T-Rex with the shield off, agent data that restores the
 authors' T-Rex skill, and the shared head (section 3) at full scale.
 
-Total Modal spend for all three rounds: about $69 (`modal billing summary` read $68.20 before the last runs were metered).
-<!-- PENDING: the final Modal bill, read after the last runs were metered -->
+Total Modal spend for all three rounds: about $68. `modal billing summary` read $68.09 after the last job, which includes the paired test and the clip render. An earlier reading on the same day was $68.20, so the billing page was still settling.

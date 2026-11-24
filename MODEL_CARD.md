@@ -204,8 +204,7 @@ steps (2/5 with distillation, 0/5 without). We did not run a training recipe as 
 blend, so none of this shows that blending beats light training. Details are in
 [`results/innovations/day2_2026-11-22.md`](https://github.com/samstealth/system-one-model-tweaks/blob/HEAD/results/innovations/day2_2026-11-22.md)
 and [`day3_2026-11-23.md`](https://github.com/samstealth/system-one-model-tweaks/blob/HEAD/results/innovations/day3_2026-11-23.md).
-All the experiments in the repo together cost about $69 on Modal.
-<!-- PENDING: the final Modal bill, read after the last runs were metered -->
+All the experiments in the repo together cost about $68 on Modal (the billing summary read $68.09 after the last job).
 
 ## Intended use
 

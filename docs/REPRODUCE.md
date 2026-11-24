@@ -58,8 +58,8 @@ Only day totals were recorded, from Modal's billing page.
 |---|---|---|
 | Day 1, 22 Nov (`slice_run_2026-11-22.md`) | latency, embeddings, backbone screen, FP8 accuracy, post-training variants, first T-Rex runs | $42.33 metered, of which $30 was covered by included credits |
 | Day 2, 22 Nov (`day2_2026-11-22.md`) | blends, distillation, anchor, agent data, T-Rex with the shield on and off, first DeepSWE seed | about $21 (the meter went from $42.33 to $63.15) |
-| Day 3, 23 Nov (`day3_2026-11-23.md`) | held-out test, two more blends, T-Rex over 15 seeds, four more DeepSWE seeds, AWQ accuracy, demo sample | about $5 to $7 (the meter read $68.20 before the last runs were counted) |
-| All three | | about $69 |
+| Day 3, 23 Nov (`day3_2026-11-23.md`) | held-out test, two more blends, T-Rex over 15 seeds, four more DeepSWE seeds, AWQ accuracy, demo sample | about $5 (the meter read $68.09 after the last job) |
+| All three | | about $68 |
 
 <!-- PENDING: cost and wall-clock per Modal job. Only the day totals above were recorded. -->
 

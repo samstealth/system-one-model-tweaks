@@ -1,4 +1,4 @@
-> This is the original baseline README from [VizuaraAI/system-one-from-scratch](https://github.com/VizuaraAI/system-one-from-scratch) (Apache 2.0), kept as imported. File paths in it, such as `pipeline/`, are relative to the repo root. This repo's own README is [`../README.md`](../README.md).
+> This is the original baseline README from [VizuaraAI/system-one-from-scratch](https://github.com/VizuaraAI/system-one-from-scratch) (Apache 2.0), kept as imported. File paths in it, such as `pipeline/`, are relative to the repo root. This repo's own README is [`../README.md`](../README.md). The `site/` folder it mentions, the workshop deck, is not copied into this repo: see the original repository.
 
 # System One Model from Scratch
 
