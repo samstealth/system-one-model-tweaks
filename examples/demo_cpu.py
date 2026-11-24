@@ -145,15 +145,13 @@ def accuracy_table(rows, n_opts, gold, picks):
     w = max([len(s) for s in sources] + [len("source"), 3])
     print("  " + "source".ljust(w) + "n".rjust(7) + "chance".rjust(9) + "".join(h.rjust(col(h)) for h in names))
     acc = {h: {} for h in names}
-    hits = {"sources": {}, "heads": {h: {} for h in names}}
+    hits = {h: {} for h in names}  # the layout of results/innovations/demo_sample.json
     for s in sources + ["all"]:
         m = np.ones(len(rows), bool) if s == "all" else src == s
-        chance = float((1 / n_opts[m]).mean())
-        hits["sources"][s] = {"n": int(m.sum()), "chance": round(chance, 4)}
-        line = "  " + s.ljust(w) + str(int(m.sum())).rjust(7) + f"{100 * chance:.1f}%".rjust(9)
+        line = "  " + s.ljust(w) + str(int(m.sum())).rjust(7) + f"{100 * (1 / n_opts[m]).mean():.1f}%".rjust(9)
         for h in names:
             acc[h][s] = float((picks[h][m] == gold[m]).mean())
-            hits["heads"][h][s] = int((picks[h][m] == gold[m]).sum())
+            hits[h][s] = {"n": int(m.sum()), "hits": int((picks[h][m] == gold[m]).sum())}
             line += f"{100 * acc[h][s]:.1f}%".rjust(col(h))
         print(line)
     return acc, hits
@@ -219,9 +217,8 @@ def main(argv=None):
     print("Only the heads ran here. The backbone vectors were computed in advance.")
     print("A sample this small gives rough numbers. Measured results and their limits: innovations/RESULTS.md")
     if a.json:
-        out = {"note": "python examples/demo_cpu.py --json FILE: top-1 hits of each head on the demo sample, per source",
-               "date": time.strftime("%Y-%m-%d"), "sample": os.path.relpath(sample_paths(a.data)[0], os.path.dirname(HERE)),
-               "decisions": len(rows), **hits}
+        out = {"note": f"examples/demo_cpu.py --json on {os.path.basename(sample_paths(a.data)[0])} ({len(rows)} decisions), "
+                       f"CPU, heads only, {time.strftime('%Y-%m-%d')}", "heads": hits}
         os.makedirs(os.path.dirname(os.path.abspath(a.json)), exist_ok=True)
         with open(a.json, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1)
