@@ -1,0 +1,74 @@
+Loaded 60 decisions from examples/data\sample_decisions.npz (vectors of size 4096, up to 10 options each).
+Head  CLM-8B: 18,887,680 parameters, tower=separate, 4096 -> 1536 -> 1536 -> 512, scale 100.0 (logit_scale 4.6132)
+Head  S1-Tweaks v0.1: 18,887,680 parameters, tower=separate, 4096 -> 1536 -> 1536 -> 512, scale 100.0 (logit_scale 4.6132)
+Head  S1-Router v0.1: 18,887,680 parameters, tower=separate, 4096 -> 1536 -> 1536 -> 512, scale 100.0 (logit_scale 4.6132)
+
+--- decision 2 of 60, source: glaive_fc --------------------
+State:
+    User request: I have 1000 Euros. How much would it be in US dollars?
+    
+    Which tool should the agent call next?
+
+   #  option                                              CLM-8B   S1-Tweaks v0.1   S1-Router v0.1  
+   0  find_closest_store: Find the closest sto...           2.6%             1.4%             0.0%  
+   1  no_tool: Answer directly without calling...          25.9%             8.3%             0.0%  
+   2  calculate_loan_amortization: Calculate t...          12.9%             8.7%             0.0%  
+   3  get_current_news: Get the latest news ba...           9.3%             3.9%             0.0%  
+   4  track_fitness_progress: Track and monito...           0.0%             0.0%             0.0%  
+   5  convert_currency: Convert curre...  <- gold          27.5% *          63.5% *         100.0% *
+   6  calculate_loan_payments: Calculate month...           6.4%             5.0%             0.0%  
+   7  get_temperature: Get the current tempera...           8.0%             5.6%             0.0%  
+   8  generate_id: Generate a unique identifier             0.7%             0.7%             0.0%  
+   9  calculate_carbon_footprint: Calculate th...           6.8%             2.9%             0.0%  
+  * = that head's pick.   CLM-8B: right   S1-Tweaks v0.1: right   S1-Router v0.1: right
+
+--- decision 13 of 60, source: banking77 --------------------
+State:
+    Customer message: still waiting on that card
+    
+    Which team should handle this ticket?
+
+   #  option                                              CLM-8B   S1-Tweaks v0.1   S1-Router v0.1  
+   0  pending cash withdrawal: Route the ticke...           2.0%             2.2%             0.2%  
+   1  cash withdrawal charge: Route the ticket...           7.6%             7.4%             0.1%  
+   2  getting spare card: Route the ticket to ...           7.5%             8.1%            30.8%  
+   3  unable to verify identity: Route the tic...           1.2%             1.1%             0.0%  
+   4  card arrival: Route the ticket ...  <- gold           4.0%             5.7%            65.6% *
+   5  lost or stolen card: Route the ticket to...           4.6%             4.5%             0.5%  
+   6  card swallowed: Route the ticket to card...           0.5%             0.5%             0.8%  
+   7  top up by cash or cheque: Route the tick...          56.5% *          54.0% *           1.0%  
+   8  cancel transfer: Route the ticket to can...          13.0%            13.3%             0.4%  
+   9  verify top up: Route the ticket to verif...           3.1%             3.3%             0.5%  
+  * = that head's pick.   CLM-8B: wrong   S1-Tweaks v0.1: wrong   S1-Router v0.1: right
+
+--- decision 37 of 60, source: heldout_bfcl --------------------
+State:
+    User request: Can I find a good cooking recipe for apple pie using less than 5 ingredients?
+    
+    Which tool should the agent call next?
+
+   #  option                                              CLM-8B   S1-Tweaks v0.1   S1-Router v0.1  
+   0  restaurant.find: Locate restaurants base...           2.3%             1.0%             0.0%  
+   1  health_api.HealthApi.get_version: Retrie...           0.0%             0.0%             0.0%  
+   2  no_tool: Answer directly without calling...          19.2%             9.0%             0.0%  
+   3  recipe.find: Locate cooking rec...  <- gold          48.3% *          72.4% *         100.0% *
+   4  electromagnetism.ampere_law: Calculate m...           0.0%             0.0%             0.0%  
+   5  Alarm_1_AddAlarm: Sets a new alarm with ...           0.0%             0.0%             0.0%  
+   6  usage_api.UsageApi.get_hosts_per_day: Re...           0.1%             0.0%             0.0%  
+   7  SyntheticSettingsApi.get_synthetic_tests...           0.9%             0.4%             0.0%  
+   8  restaurant_info: Get restaurant informat...          29.1%            17.2%             0.0%  
+   9  acl_api.delete_mapping: Removes an ACL (...           0.0%             0.0%             0.0%  
+  * = that head's pick.   CLM-8B: right   S1-Tweaks v0.1: right   S1-Router v0.1: right
+
+Top-1 accuracy on this sample (60 decisions). Chance is the mean of 1 / number of options.
+  source               n   chance           CLM-8B   S1-Tweaks v0.1   S1-Router v0.1
+  banking77           12    10.0%            16.7%            25.0%            91.7%
+  clinc_oos           12    10.0%            41.7%            50.0%            83.3%
+  glaive_fc           12    10.0%            83.3%            91.7%           100.0%
+  heldout_bfcl        12    10.0%            58.3%            66.7%            75.0%
+  heldout_massive     12    10.0%            41.7%            50.0%            41.7%
+  all                 60    10.0%            48.3%            56.7%            78.3%
+
+Scored 60 decisions with 3 heads in 0.39 s on CPU.
+Only the heads ran here. The backbone vectors were computed in advance.
+A sample this small gives rough numbers. Measured results and their limits: innovations/RESULTS.md
