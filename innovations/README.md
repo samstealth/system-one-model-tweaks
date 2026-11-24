@@ -30,7 +30,8 @@ and test definitions.
 | `sweep_cpu.sh` | The head layout sweep on a CPU. |
 | `build_qa_text.py` | Rebuilds Q&A text from the public Qwen token ids, so any backbone can embed it. |
 | `fetch_choice_src.py`, `build_choice_data.py` | Downloads the public sources and builds the listwise choice training and test rows. |
-| `build_heldout_choice.py` | Builds the held-out choice test from eight sources no head here was trained on. |
+| `build_heldout_choice.py` | Builds the held-out choice test: seven sources no head here was trained on, plus the MMLU test split. |
+| `heldout_paired.py` | Paired bootstrap and McNemar test of two heads on the held-out rows (Modal job). |
 | `modal_embed.py`, `modal_train.py` | The GPU side on Modal: embed text with any backbone, time it, run the trainer. |
 | `export_demo_sample.py` | Exports the 60 decisions behind `examples/demo_cpu.py`. |
 
@@ -137,15 +138,19 @@ trained on these rows through the engine, put `name: description` in the option'
 
 **What the test rows are.** The test rows above are held-out rows from the same sources as the
 training rows, so scores on them are in-distribution. `build_heldout_choice.py` builds a second,
-test-only set from eight public sources that no head here was trained on. `--choice-eval` reports
-top-1 per source for either set. The labeled source never uses T-Rex text, but it teaches the
+test-only set from eight public sets: seven sources that no head here was trained on, plus the
+MMLU test split (training used MMLU's `auxiliary_train` set). `--choice-eval` reports top-1 per
+source for either set. The labeled source never uses T-Rex text, but it teaches the
 skill T-Rex's labeled prompt tests, so a T-Rex score after training on it should be reported as
 in-domain.
 
 **What the runs showed.** The diagnosis was only half right. Listwise post-training lifts tool
 choice and routing by a lot, but it erases the authors' T-Rex skill. That skill comes from their
 agent post-training, not from telling sibling options apart. A light weight blend
-(`interpolate.py`) keeps most of it. The numbers, the failed attempts and the limits are in
+(`interpolate.py`) keeps T-Rex survival with the safety shield on (19 of 20 games against 20 of
+20). With the shield off it dies as often as a head with no agent training. The label-reading
+rows did not help either: the post-trained head reads tags better and still lost the game. The
+numbers, the failed attempts and the limits are in
 [RESULTS sections 5 to 7](RESULTS.md#5-post-training-idea-5).
 
 The recipe behind the two released heads, in short. The full version, with hardware and cost, is

@@ -1,7 +1,9 @@
 # Reproduce every result
 
-Every number in this repo comes from one of the commands below. For each one this guide gives the
-hardware, the wall-clock time where it was recorded, and the cost. It goes from free to paid:
+Every measured number in this repo comes from one of the commands below and is saved in a result
+file or a dated run note under `results/`. Guesses are marked as guesses. For each command this
+guide gives the hardware, the wall-clock time where it was recorded, and the cost. It goes from
+free to paid:
 
 1. [Free, on a CPU](#1-free-on-a-cpu): the tests, the demo, a check of our eval code, head
    quantization, the head layout sweep and the data builders.
@@ -101,8 +103,12 @@ It scores 60 real decisions whose Qwen3-8B vectors were computed in advance
 `banking77`, `clinc_oos`, `heldout_bfcl` and `heldout_massive`). The first run downloads CLM's head
 from Hugging Face.
 
-- **checked**: CLM's head gets 29 of 60. Scoring takes under a second and the whole script about 3 s.
-- **recorded** (`day3_2026-11-23.md`, section 5): S1-Tweaks v0.1 gets 34 of 60.
+- **checked**: CLM's head gets 29 of 60. Scoring takes about a second or less on an idle CPU and
+  the whole script about 3 s.
+- **recorded** (`results/innovations/demo_sample.json`): S1-Tweaks v0.1 gets 34 of 60 and S1-Router
+  v0.1 gets 47, with the hits per source for each head.
+- `python examples/demo_cpu.py --json my_demo.json` writes the hits per head and per source of your
+  run in the same layout, so you can compare the two files.
 - Until the v0.1 release is live, the demo cannot download the two S1 heads. It says so and runs
   with CLM's head alone.
 
@@ -161,7 +167,9 @@ done
 
 **checked**: the last line of each run starts with `RESULT` and holds `tricky_top1` and `gen_top1`.
 The rerun gave 51.3%, 68.8% and 68.2% tricky and 83.6%, 83.9% and 83.9% general, the numbers in
-RESULTS section 1. Each head took 17 to 32 s.
+RESULTS section 1. Each head took 17 to 32 s. The three `result.json` files of a second rerun, on
+24 November, are saved in `results/innovations/eval_check/`. The tricky test scores 19,136 rows:
+the rows with hard negatives among the first 20,000.
 
 ### 1.5 Quantize the heads and the action cache
 
@@ -229,6 +237,20 @@ Times on the check machine: 13 s for the choice builder, 16 s for the held-out b
 29 MB of downloads, 1 min 33 s for the Q&A slice with its 2.1 GB of downloads. The rebuilt held-out
 set has the same per-source counts as `results/innovations/heldout/counts.json`, and the rebuilt
 test sets contain all 60 rows of the demo sample.
+
+What the docs say about these data sets is counted by one script, from the built files:
+
+```bash
+python scripts/data_checks.py --choice choice --heldout heldout \
+    --qa-test qa_text/qa_text_test.jsonl --out my_data_checks.json
+```
+
+**checked** on 24 November: this wrote `results/innovations/data_checks.json`. Per source it holds
+the row count, the number of options, the chance level (the mean of 1 / number of options) and, for
+Glaive, how many states carry earlier dialogue turns and an end-of-text marker (510 of 1,129 test
+rows). With `--qa-test` it downloads three metadata files of about 0.5 MB and counts how many pairs
+of the Q&A test slice are in the published chunks that post-training replayed: 424 of 11,998 pairs,
+from 53 of 1,500 documents. A few seconds on a CPU.
 
 ## 2. GPU jobs on Modal
 
@@ -405,6 +427,10 @@ Three things to know when you compare your run with ours:
 - **Real-time play is not deterministic.** `wise_0.15` survived seed 0 in the 5-seed run and died on
   it in the 15-seed run. One game either way is inside the noise.
 - **Always report both shield modes.** With the shield off the picture changes a lot. See RESULTS section 6.
+- **What the shield count is.** `shield_interventions` in `trex.json` is the sum of three per-seed
+  counters of CLM's harness: answers that the shield's check changed when they arrived, top picks
+  that the planner had labelled unsafe and were replaced, and emergency moves. The per-seed files in
+  `results/innovations/trex_15seeds/` and `trex_per_seed/` hold them one by one.
 
 <!-- PENDING: wall-clock and cost of one T-Rex run. Neither was recorded. -->
 
@@ -460,7 +486,8 @@ modal run pipeline/run_deepswe.py --tag wise_0.15_s1 --init /data/runs/wise_0.15
 ```
 
 One A10G. The job fine-tunes the head with CLM's own `finetune.py` on the passing DeepSWE steps,
-then counts how many of the 38 held-out tasks its best-of-4 pick solves. Seeds used: 1234 (the
+then counts how many of the 38 held-out tasks its best-of-4 pick solves. So the score is for the
+head after that fine-tune, not for the head as shipped. Seeds used: 1234 (the
 default), 1, 2, 3 and 4. The tag names are ours to choose. Only the first one above is **rebuilt**.
 
 ## 3. Rebuild both released heads from CLM's public head
@@ -471,7 +498,11 @@ default), 1, 2, 3 and 4. The tag names are ours to choose. Only the first one ab
 | Made by | post-training CLM's head | blending 85% CLM's head with 15% S1-Router |
 | Needs | one L40S for a few minutes, plus the embedding jobs | a CPU for a few seconds |
 | Released file | `s1_router_v0.1.pt`, 75,557,108 bytes | `s1_tweaks_v0.1.pt`, 75,557,108 bytes |
-| sha256 | `d9f22c9fe0a52d4bd32fe1a6c965b3900fc854c44f1c6267f23bf6e897911b18` | `c0a32217d1288d8452046bda9bcb045b53b052b943ef7de42652691e057fd9d9` |
+
+```text
+sha256  d9f22c9fe0a52d4bd32fe1a6c965b3900fc854c44f1c6267f23bf6e897911b18  s1_router_v0.1.pt
+sha256  c0a32217d1288d8452046bda9bcb045b53b052b943ef7de42652691e057fd9d9  s1_tweaks_v0.1.pt
+```
 
 CLM's public head is `CLM_v0.1-8B.pt` in
 [Contrastive-LM/CLM-v0.1-8B](https://huggingface.co/Contrastive-LM/CLM-v0.1-8B). The commands below
@@ -503,6 +534,11 @@ python -m innovations.scorer my_s1_router.pt my_s1_tweaks.pt     # prints the la
 
 Step 3 also prints the tricky and general Q&A scores if the Q&A slice is on the volume
 (`--job qa --backbone qwen3-8b`, section 2.3). Without it, only the choice scores are printed.
+
+`interpolate` reads both files with `torch.load(weights_only=True)`. Its `--a` and `--b` also take
+the names `clm`, `s1-tweaks` and `s1-router`, which download the public files. So once the release
+is live, `python -m innovations.interpolate --a clm --b s1-router --alpha 0.15 --out my_blend.pt`
+makes the blend with no Modal volume.
 
 What to expect:
 
@@ -539,7 +575,7 @@ A head must be on the volume in CLM's checkpoint layout. For a released file:
 modal volume put clm-data s1_tweaks_v0.1.pt /runs/s1_tweaks/final_authors_layout.pt
 ```
 
-**Held-out choice test** ([RESULTS section 7](../innovations/RESULTS.md#7-held-out-choice-test-sources-no-head-here-was-trained-on)).
+**Held-out choice test** ([RESULTS section 7](../innovations/RESULTS.md#7-held-out-choice-test-built-by-us-from-public-sets)).
 **recorded** in `day3_2026-11-23.md`. The build is free. The embedding and the scoring use an L40S.
 
 ```bash
@@ -550,7 +586,15 @@ modal run innovations/modal_train.py --args "--root /data/emb/qwen3-8b --init /d
 ```
 
 The `RESULT` line holds one `choice_heldout_<source>` score per source. Ours are in
-`results/innovations/heldout/` and, as percentages, in `heldout.json`. The held-out vectors sit in
+`results/innovations/heldout/` and, as percentages, in `heldout.json`. The paired test of two heads
+on the same rows (bootstrap interval and McNemar p-value per source) is one more CPU job on Modal,
+**recorded** in the docstring of the script. It wrote `results/innovations/heldout_paired.json`:
+
+```bash
+modal run innovations/heldout_paired.py
+```
+
+ The held-out vectors sit in
 their own folder, so no training run can read them by accident. `--root` needs at least one training
 chunk to read the vector size from. If you skipped the Q&A slice, add `--chunks shard_10/0`.
 

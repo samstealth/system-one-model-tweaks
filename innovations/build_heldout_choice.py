@@ -1,10 +1,11 @@
-"""Out-of-distribution choice tests: sources that NO head in this repo was trained on.
+"""Held-out choice tests: seven sources that no head in this repo was trained on, plus the MMLU test split.
 
 The listwise sets in build_choice_data.py have test splits from the same sources we post-train on
 (banking77, clinc, ARC, CSQA, MMLU auxiliary_train, glaive, labeled), so gains there are
-in-distribution. This builder writes a second, test-only set from public ungated sources that none of
-our training touched, with the same row format, state/option templates and K=10 option cap as the
-training builder, so a head scored on both sets shows how much of its gain transfers.
+in-distribution. This builder writes a second, test-only set from public ungated sources, with the
+same row format, state/option templates and K=10 option cap as the training builder, so a head scored
+on both sets shows how much of its gain transfers. Seven of the eight sources are new to every head
+here. MMLU is a held-out split and not a new source: training used its auxiliary_train set.
 
   family      source               rows                          template (as in build_choice_data.py)
   tool        heldout_bfcl         BFCL v3 multiple + live_multiple, single-call items     glaive_fc

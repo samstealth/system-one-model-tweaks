@@ -43,14 +43,17 @@ pattern: `make_root` writes a tiny vector store in a temp folder and the test tr
 Readers of this repo are skeptical, and they are right to be. So:
 
 - **Every number in `README.md`, `MODEL_CARD.md`, `docs/` and `innovations/RESULTS.md` must be readable
-  from a file under `results/`.** New work goes in `results/innovations/`.
+  from a file under `results/`: a result JSON, or a dated run note for things like costs and commands.**
+  New work goes in `results/innovations/`.
 - The trainer writes a `result.json` for every run. Copy it to `results/innovations/<run name>.json` and
   commit it with the docs change. T-Rex summaries go in `trex.json`, DeepSWE counts in `deepswe.json`,
-  held-out choice scores in `heldout.json`.
+  held-out choice scores in `heldout.json`, paired intervals in `heldout_paired.json`, and row counts,
+  option counts and chance levels of the data sets in `data_checks.json` (`python scripts/data_checks.py`).
 - State the limits next to the claim: how many seeds, how many test rows, and whether the test rows come
   from sources the head was trained on.
 - Say "near-tie" when it is one. 19 of 20 games against 20 of 20 is not a match.
-- Not measured yet? Write `<!-- PENDING: what is missing -->`. Never fill a gap with an estimate.
+- Not measured yet? Write `<!-- PENDING: what is missing -->`. Never fill a gap with an estimate. If
+  you must give a guess, call it a guess in the same sentence.
 - Never edit a measured number in `results/`. If a write-up there turns out to be wrong, add a dated
   correction note under it, as in `results/innovations/day2_2026-11-22.md`.
 - Charts are built from the result files. Run `python scripts/make_figures.py` after a result file
@@ -82,7 +85,7 @@ everything already run are in [`docs/REPRODUCE.md`](docs/REPRODUCE.md).
   `results/innovations/day2_2026-11-22.md`). The only head that kept 22 deaths was the one anchored so
   hard that it gained nothing. Is there a blend or a method that gains on the choice tests and keeps
   this? Not tried yet: blend weights below 0.15, blending only the state head or only the action head,
-  a different weight per layer, low-rank updates. `innovations/interpolate.py` is 40 lines. Needs one
+  a different weight per layer, low-rank updates. `innovations/interpolate.py` is about 70 lines. Needs one
   L40S for a few minutes per head.
 - **Agent data that restores CLM's T-Rex skill.** Our agent mix (118,465 training pairs from 34 ADP
   configs) reached 2/5 T-Rex courses with distillation and 0/5 without. CLM's own post-training keeps
@@ -93,26 +96,27 @@ everything already run are in [`docs/REPRODUCE.md`](docs/REPRODUCE.md).
 - **The shared head at full scale.** One shared head for states and actions learned fastest in the CPU
   sweep with half the parameters: 64.8% general against 56.5% after 3,000 steps
   (`results/innovations/cpu_sweep/`, `innovations/RESULTS.md` section 3). It may only be faster early
-  on. The check is `innovations/modal_train.py --tower shared_adapter` on the published vectors, which
-  `innovations/RESULTS.md` estimates at about $10 of GPU time. It needs the published vectors staged
+  on. The check is `innovations/modal_train.py --tower shared_adapter` on the published vectors. Our
+  guess is about $10 of GPU time, which is a guess and not a measurement. It needs the published vectors staged
   on a Modal volume first (`docs/BASELINE.md`). A shared head cannot be exported to CLM's checkpoint
   layout, so the official engine cannot serve it as is.
-- **Matryoshka at full scale.** In the same sweep a Matryoshka head was as accurate at 64 dims as at
-  1024 (`results/innovations/cpu_sweep/mrl_p1024.json`). If that holds after full training, the action
+- **Matryoshka at full scale.** In the same sweep a Matryoshka head at 64 dims was within 0.3 points
+  of its score at 1024 (`results/innovations/cpu_sweep/mrl_p1024.json`). If that holds after full training, the action
   cache can be 8 times smaller. The full-scale command is in the docstring of `innovations/modal_train.py`.
 - **A full-scale retrain on a newer backbone.** Muse Glimmer 30B led the backbone screen (36.9% tricky
   against 34.2% for Qwen3-8B), but that was a 96k-pair slice where every head overfits
   (`results/innovations/bb_*.json`). A real answer needs the full Q&A text embedded with the new
   backbone and a full pre-training and mid-training run. Its latency per decision is not measured
   either: only the Qwen variants were timed.
-- **Close AWQ's 4.5-point gap.** The AWQ 4-bit backbone is 36 to 37% faster than bf16 but costs 4.5
+- **Close AWQ's 4.5-point gap.** The AWQ 4-bit backbone has 36 to 37% lower latency than bf16 but costs 4.5
   points of tricky Q&A with CLM's unchanged head, against 0.7 for FP8 (`results/innovations/auth_awq.json`,
   `auth_fp8.json`, `backbone_latency_l40s.json`). Two things to try: an AWQ calibrated on the pooling
   task, with states and options as calibration text and the last-token vector as the target. Or a few
   hundred head training steps on AWQ vectors.
-- **More held-out decision benchmarks.** The held-out test has 13,194 rows from eight sources
-  (`results/innovations/heldout.json`). It has single tool calls only, short routing messages and
-  English only. Wanted: other tool-calling sets, multi-step agent decisions, routing in other
+- **More held-out decision benchmarks.** The held-out test has 13,194 rows that we built from eight
+  public sets, seven of them sources we never trained on (`results/innovations/heldout.json`). It has
+  single tool calls only, short routing messages, English only and one option wording, which is ours.
+  A test with a different option wording would show how much of the gain is the template. Wanted: other tool-calling sets, multi-step agent decisions, routing in other
   languages, and any agent benchmark besides T-Rex and DeepSWE that can be run from public parts.
   `innovations/build_heldout_choice.py` shows how to add a source and how to drop rows that overlap the
   training data.

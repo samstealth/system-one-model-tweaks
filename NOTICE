@@ -27,9 +27,14 @@ Changes made here to the imported files:
     config, into its own folder.
   - The baseline README was moved to docs/BASELINE.md. Edits to it are in the git history.
 
+The two changed pipeline files carry a notice of the change in their first lines.
+
 Added in this repository: everything in innovations/, examples/, scripts/, tests/, assets/,
 .github/ and results/innovations/, plus the top-level README.md, MODEL_CARD.md and
 docs/REPRODUCE.md.
+
+This project is not affiliated with, sponsored by or endorsed by Vizuara AI Labs. Section 5
+lists the material in site/ that the Apache 2.0 licence does not cover.
 
 
 2. CLM-v0.1-8B (Contrastive Language Models)
@@ -75,15 +80,40 @@ code at a pinned commit when they run.
     (jackyk02/nemotron_dqa_qwen3_8b_neg_embeddings). They are not redistributed here. The
     Nemotron-derived data is under the NVIDIA Open Data License.
   - The datasets behind the choice training data: PolyAI/banking77, clinc/clinc_oos,
-    glaiveai/glaive-function-calling-v2, allenai/ai2_arc, tau/commonsense_qa and cais/mmlu.
-    The agent mix used neulab/adp-v2.
+    glaiveai/glaive-function-calling-v2, allenai/ai2_arc, tau/commonsense_qa and cais/mmlu
+    (its auxiliary_train set). The label-reading rows are built from the multiple-choice
+    questions of the last three. The agent mix used neulab/adp-v2.
   - The datasets behind the held-out choice test: gorilla-llm/Berkeley-Function-Calling-Leaderboard,
     mteb/amazon_massive_intent, DeepPavlov/hwu64,
     bitext/Bitext-customer-support-llm-chatbot-training-dataset, allenai/sciq, allenai/qasc,
-    cais/mmlu and openlifescienceai/medmcqa.
+    cais/mmlu (its test set) and openlifescienceai/medmcqa.
+
+Licence tag on each dataset card on Hugging Face, read on 24 November 2026:
+
+  used for        dataset                                                       licence tag on the card
+  training        PolyAI/banking77                                              CC BY 4.0
+  training        clinc/clinc_oos                                               CC BY 3.0
+  training        glaiveai/glaive-function-calling-v2                           Apache 2.0
+  training        allenai/ai2_arc                                               CC BY-SA 4.0
+  training        tau/commonsense_qa                                            MIT
+  training, test  cais/mmlu                                                     MIT
+  replay          Contrastive-LM/CLM-v0.1-Pretrain-Nemotron                     no licence tag
+  replay          jackyk02/nemotron_dqa_qwen3_8b_neg_embeddings                 other: NVIDIA Open Data License
+  agent mix       neulab/adp-v2                                                 other
+  test            gorilla-llm/Berkeley-Function-Calling-Leaderboard             Apache 2.0
+  test            mteb/amazon_massive_intent                                    Apache 2.0
+  test            DeepPavlov/hwu64                                              no licence tag
+  test            bitext/Bitext-customer-support-llm-chatbot-training-dataset   CDLA-Sharing-1.0
+  test            allenai/sciq                                                  CC BY-NC 3.0
+  test            allenai/qasc                                                  CC BY 4.0
+  test            openlifescienceai/medmcqa                                     Apache 2.0
+
+The MMLU auxiliary_train set is built from ARC, MC_TEST, OBQA and RACE. We did not check the
+terms of each of those sets.
 
 Each dataset keeps its own licence. See its dataset card before you reuse it. Some of them do
-not allow commercial use.
+not allow commercial use. Apache 2.0 covers our changes to CLM's Apache 2.0 weights. We make no
+statement on whether the licence of a training set reaches the weights.
 
 
 4. Sample data in examples/data/
@@ -104,5 +134,38 @@ Hugging Face, read on 23 November 2026:
 The mteb/amazon_massive_intent card lists Apache 2.0. The card of the original dataset,
 AmazonScience/massive, lists CC BY 4.0.
 
-The state and option texts in the sample were rewritten into this repository's templates by
-innovations/build_choice_data.py and innovations/build_heldout_choice.py.
+Credit for the three Creative Commons sources:
+
+  - BANKING77 is by Iñigo Casanueva, Tadas Temčinas, Daniela Gerz, Matthew Henderson and Ivan
+    Vulić (PolyAI), "Efficient Intent Detection with Dual Sentence Encoders", 2020.
+    Licence: https://creativecommons.org/licenses/by/4.0/
+  - CLINC150 (clinc_oos) is by Stefan Larson and co-authors (Clinc and the University of
+    Michigan), "An Evaluation Dataset for Intent Classification and Out-of-Scope Prediction",
+    2019. Licence: https://creativecommons.org/licenses/by/3.0/
+  - MASSIVE is by Jack FitzGerald and co-authors (Amazon), "MASSIVE: A 1M-Example Multilingual
+    Natural Language Understanding Dataset with 51 Typologically-Diverse Languages", 2022.
+    Licence: https://creativecommons.org/licenses/by/4.0/
+
+Changes made to these rows: the state and option texts in the sample were rewritten into this
+repository's templates by innovations/build_choice_data.py and
+innovations/build_heldout_choice.py.
+
+
+5. Third-party material in site/
+--------------------------------
+
+The workshop deck in site/ was imported as it is from the Vizuara repository. It holds material
+that the Apache 2.0 licence of that repository, and of this one, does not cover:
+
+  - site/img/kahneman.jpg: a photo of Daniel Kahneman by Eirik Solheim / NRKbeta.no, licensed
+    under Creative Commons Attribution-Share Alike 3.0 Norway
+    (http://creativecommons.org/licenses/by-sa/3.0/no/). The credit and the licence are taken
+    from the file's own metadata.
+  - site/img/book.jpg: the cover of the book "Thinking, Fast and Slow". The rights stay with
+    its publisher.
+  - site/img/vizuara-logo.png, site/img/raj.jpg (a photo of the workshop host) and the Vizuara
+    name: they belong to Vizuara AI Labs and to the person shown. This repository does not
+    license them, and Apache 2.0 grants no trademark rights.
+
+The deck also links to Vizuara's own site on every slide. Those links are theirs. They are not
+an offer or an endorsement by this project.

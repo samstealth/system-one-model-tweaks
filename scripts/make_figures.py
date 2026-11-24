@@ -4,7 +4,7 @@
     pip install matplotlib
     python scripts/make_figures.py                      # every figure, light and dark
     python scripts/make_figures.py --only hero,heldout
-    python scripts/make_figures.py --numbers            # also print the numbers each chart shows
+    python scripts/make_figures.py --numbers            # also print the numbers each chart shows, as JSON on stdout
     python scripts/make_figures.py --results DIR --out DIR   # other folders, for testing
 
 Outputs (in assets/):
@@ -19,6 +19,8 @@ Where the numbers come from
 Result files and what the charts take from them
     auth_post.json, wise_<w>.json, post_choice_hn_frompost.json   in-distribution evals per head
     heldout.json             {"rows", "dropped", "heads": {head: {source: top-1 %}}}
+    heldout_paired.json      paired bootstrap interval of each held-out gain
+    data_checks.json         options per row and chance level of each choice test (scripts/data_checks.py)
     trex.json                T-Rex summaries. A run stored as <head>_<N>seeds is a later run of
                              the same head; the hero adds the games of all runs of a head
     deepswe.json             {"seeds", "heads": {head: {"solved": [...], "mean": x}}}
@@ -59,18 +61,25 @@ ROOT = Path(__file__).resolve().parents[1]
 # here, in one place, each with its source. Everything else is read from the JSON files.
 # ---------------------------------------------------------------------------------------------
 MD_ONLY = {
-    # innovations/RESULTS.md, last line: "Total Modal spend for all three days: about $69"
+    # innovations/RESULTS.md, last line: "Total Modal spend for all three rounds: about $69"
     "modal_spend_usd": "69",
     # innovations/RESULTS.md section 4: "the same 96k-pair slice"
     "backbone_slice_pairs": "96k",
-    # innovations/RESULTS.md section 3: "12 published chunks (1.2M pairs), batch 1,024, 3,000 steps"
+    # innovations/RESULTS.md section 3: "12 published chunks (1.2M pairs), batch 1,024, 3,000 steps, seed 1234"
+    # (so every layout was trained once: one seed)
     "cpu_sweep_pairs": "1.2M",
     # innovations/RESULTS.md section 2: quant_heads_mid.json was measured on the authors' mid-trained head
     "quant_head_name": "CLM's mid-trained head",
     # innovations/RESULTS.md section 2, latency table header: "batch 1, one L40S, vLLM 0.11"
     "latency_setup": "batch 1, one L40S",
-    # innovations/RESULTS.md section 7: "up to 10 options per question"
-    "heldout_options": "up to 10 options per question",
+    # innovations/RESULTS.md section 7: MMLU is a held-out split of a source we trained on (its
+    # auxiliary_train set), the other sources are new to our heads
+    "heldout_split_only": ("mmlu", "MMLU"),
+    # docs/REPRODUCE.md section 2.7: "--seeds N plays seeds 0 to N-1", so a later run replays the
+    # courses of an earlier, shorter one (results/innovations/trex_15seeds/*.json list seeds 0 to 14)
+    "trex_seeds_start_at": 0,
+    # docs/REPRODUCE.md section 2.9: each head is fine-tuned on DeepSWE steps with CLM's finetune.py, then scored
+    "deepswe_setup": "each head is first fine-tuned on DeepSWE steps with CLM's own script, then scored",
     # results/innovations/day3_2026-11-23.md section 3: "DeepSWE over 5 seeds (38 held-out tasks)";
     # used only if the note inside deepswe.json stops saying so
     "deepswe_tasks": 38,
@@ -304,6 +313,8 @@ class Data:
         self.trex, self.trex_more = self._load_trex()
         self.deepswe = self._load_deepswe()
         self.heldout = self._load_heldout()
+        self.paired = load_json(res / "heldout_paired.json")
+        self.checks = load_json(res / "data_checks.json")
         self.latency = load_json(res / "backbone_latency_l40s.json")
         self.quant_heads = load_json(res / "quant_heads_mid.json")
         self.backbones = {}
@@ -411,6 +422,42 @@ class Data:
         known = [t for t in HELDOUT_SOURCES if t[0] in ok]
         seen = {t[0] for t in known}
         return known + [(s, s.upper(), s.upper(), "Other") for s in ok if s not in seen]
+
+    def chance(self, key: str):
+        """Chance level of a choice test in %: the mean of 1 / number of options. None if not recorded.
+
+        key is a held-out source ("bfcl") or an in-distribution metric ("choice_glaive_fc").
+        """
+        ck = self.checks if isinstance(self.checks, dict) else {}
+        if key.startswith("choice_"):
+            d = ((ck.get("choice") or {}).get("test") or {}).get(key[len("choice_"):])
+        else:
+            d = (ck.get("heldout") or {}).get(key)
+            if d is None and isinstance(self.paired, dict):
+                o = (self.paired.get("options_per_source") or {}).get(key) or {}
+                return float(o["chance_pct"]) if is_num(o.get("chance_pct")) else None
+        return float(d["chance"]) * 100 if isinstance(d, dict) and is_num(d.get("chance")) else None
+
+    def paired_ci(self, key: str, new: str = OURS_RUN, base: str = CLM_TREX_RUN):
+        """Paired bootstrap 95% interval, in points, of new minus base on one held-out source. None if not run."""
+        if not isinstance(self.paired, dict):
+            return None
+        ci = (((self.paired.get("sources") or {}).get(key) or {}).get(f"{new}_vs_{base}") or {}).get("bootstrap95_points")
+        return tuple(ci) if isinstance(ci, list) and len(ci) == 2 and all(is_num(v) for v in ci) else None
+
+    def heldout_what(self, keys) -> str:
+        """Says in words which held-out sources are new and which is only a held-out split."""
+        key, name = MD_ONLY["heldout_split_only"]
+        if key in keys:
+            return f"{len(keys) - 1} sources we never trained on, plus {name}'s test split"
+        return f"{len(keys)} sources we never trained on"
+
+    def trex_latency_range(self):
+        """(min, max) of the median decision latency over every shield-on T-Rex run, in ms."""
+        runs = [m for h in self.trex.values() for k, m in h.items() if k == "shield"]
+        runs += [m for h in self.trex_more.values() for m in h.get("shield", [])]
+        vals = [m["latency_ms_p50_median"] for m in runs if is_num(m.get("latency_ms_p50_median"))]
+        return (min(vals), max(vals)) if vals else None
 
     # -- blend points ----------------------------------------------------------------------
     def blend_points(self) -> list:
@@ -753,11 +800,11 @@ def _sign(d_points: float) -> int:
     return 0 if abs(d_points) < FLAT_BELOW else (1 if d_points > 0 else -1)
 
 
-def _pct_row(label, a_txt, b_txt):
+def _pct_row(label, a_txt, b_txt, chance=None):
     """A row from two printed percentages. The change is the difference of the numbers as printed."""
     d = round(float(b_txt) - float(a_txt), 1)
     return dict(label=label, clm=float(a_txt) / 100, ours=float(b_txt) / 100, clm_txt=a_txt, ours_txt=b_txt,
-                delta=signed(d), sign=_sign(d))
+                delta=signed(d), sign=_sign(d), chance=chance)
 
 
 def _count_row(label, a, b, total, unit, digits=0):
@@ -775,7 +822,7 @@ def hero_rows(D: Data):
     held, agent, indist = [], [], []
     for key, _, label, _ in D.heldout_sources(CLM_TREX_RUN, OURS_RUN):
         heads = D.heldout["heads"]
-        held.append(_pct_row(label, f"{heads[CLM_TREX_RUN][key]:.1f}", f"{heads[OURS_RUN][key]:.1f}"))
+        held.append(_pct_row(label, f"{heads[CLM_TREX_RUN][key]:.1f}", f"{heads[OURS_RUN][key]:.1f}", D.chance(key)))
     tc, to = D.trex_pooled(CLM_TREX_RUN), D.trex_pooled(OURS_RUN)
     if tc and to and tc["seeds"] == to["seeds"]:
         agent.append(_count_row("T-Rex games survived, shield on", tc["survived"], to["survived"], tc["seeds"],
@@ -785,11 +832,12 @@ def hero_rows(D: Data):
     dc, do = D.deepswe_for(CLM_TREX_RUN, CLM_EVAL_RUN), D.deepswe_for(OURS_RUN)
     if dc and do and dc["total"] == do["total"]:
         n = min(len(dc["solved"]), len(do["solved"]))
-        label = f"DeepSWE tasks, mean of {n} seeds" if n > 1 else "DeepSWE tasks solved"
+        label = f"DeepSWE after fine-tune, {n} seeds" if n > 1 else "DeepSWE after fine-tune"
         agent.append(_count_row(label, dc["mean"], do["mean"], dc["total"], "task", digits=1 if n > 1 else 0))
     for key in D.clm:
         if key.startswith("choice_") and is_num(D.clm[key]) and is_num(D.ours.get(key)):
-            indist.append(_pct_row(CHOICE_LABELS.get(key, _pretty_metric(key)), pct(D.clm[key]), pct(D.ours[key])))
+            indist.append(_pct_row(CHOICE_LABELS.get(key, _pretty_metric(key)), pct(D.clm[key]), pct(D.ours[key]),
+                                   D.chance(key)))
     indist.sort(key=lambda r: -(float(r["ours_txt"]) - float(r["clm_txt"])))
     for key, label in (("tricky_top1", "Tricky Q&A"), ("gen_top1", "General Q&A")):
         if is_num(D.clm.get(key)) and is_num(D.ours.get(key)):
@@ -805,7 +853,7 @@ def hero_title(held, agent) -> str:
         parts.append(f"up on {up} of {len(held)} held-out tests" + (f", down on {down}" if down else ""))
     trex = next((r for r in agent if r["label"].startswith("T-Rex")), None)
     if trex:
-        parts.append(f"T-Rex {trex['ours_txt']} vs {trex['clm_txt']}")
+        parts.append(f"T-Rex {trex['ours_txt']} vs {trex['clm_txt']} with the shield on")
     if not parts:
         return f"{OURS_NAME} vs {CLM_NAME} on every test both were scored on"
     return f"{OURS_NAME} vs {CLM_NAME}: " + ", ".join(parts)
@@ -817,27 +865,36 @@ def fig_hero(T, D: Data):
     shield_off = bool(nc and no)
     groups = []
     if held:
-        rows_total = sum(D.heldout["rows"][k] for k, *_ in D.heldout_sources(CLM_TREX_RUN, OURS_RUN))
+        held_keys = [k for k, *_ in D.heldout_sources(CLM_TREX_RUN, OURS_RUN)]
+        rows_total = sum(D.heldout["rows"][k] for k in held_keys)
         groups.append(("held", "Held-out tests",
-                       f"{len(held)} public sources that no head here was trained on, {rows_total:,} rows", held))
+                       f"{rows_total:,} rows, our builds: {D.heldout_what(held_keys)}", held))
     if agent or shield_off:
-        groups.append(("agent", "Agent benchmarks", f"skills {CLM_NAME} already had", agent))
+        groups.append(("agent", "Agent benchmarks", f"{CLM_NAME}'s own: T-Rex as shipped, DeepSWE after its fine-tune", agent))
     if indist:
         groups.append(("indist", "In-distribution tests",
                        "test rows share sources with our training data: an upper bound, drawn lighter", indist))
 
     # notes under the chart, known before the canvas so its height fits them
+    has_chance = any(r.get("chance") is not None for r in held + indist)
     notes = ["Slice-scale runs, not a full retrain.",
              f"A change under {FLAT_BELOW:g} point is printed in grey."]
+    if has_chance:
+        notes.append("The tick on a row marks chance: a random pick among its options.")
+    cis = [D.paired_ci(k) for k, *_ in D.heldout_sources(CLM_TREX_RUN, OURS_RUN)] if held else []
+    if cis and all(cis):
+        notes.append(f"Paired bootstrap on the held-out rows: {sum(lo > 0 for lo, _ in cis)} of {len(cis)} gains "
+                     f"have a 95% interval above zero.")
     tc = D.trex_pooled(CLM_TREX_RUN)
     if tc and any(r["label"].startswith("T-Rex") for r in agent):
-        notes.append(f"T-Rex with the shield on: {tc['seeds']:g} games per head "
-                     f"({' + '.join(f'{s:g}' for s in tc['runs'])} seeds).")
+        s0 = MD_ONLY["trex_seeds_start_at"]
+        notes.append(f"T-Rex with the shield on: {tc['seeds']:g} games per head on {max(tc['runs']):g} courses "
+                     f"({', then '.join(f'seeds {s0:g} to {s0 + n - 1:g}' for n in tc['runs'])}).")
     dc, do = D.deepswe_for(CLM_TREX_RUN, CLM_EVAL_RUN), D.deepswe_for(OURS_RUN)
     if dc and do and len(dc["solved"]) > 1:
         rng = lambda d: f"{min(d['solved']):g} to {max(d['solved']):g}"  # noqa: E731
         same = rng(dc) == rng(do)
-        notes.append(f"DeepSWE: {dc['total']:g} tasks, {rng(dc)} solved per seed for "
+        notes.append(f"DeepSWE: {MD_ONLY['deepswe_setup']} on {dc['total']:g} tasks. {rng(dc)} solved per seed for "
                      + ("both heads." if same else f"{CLM_NAME} and {rng(do)} for {OURS_NAME}."))
     note_lines = wrap_lines(" ".join(notes), 11.5, 400, W - 32)
 
@@ -863,7 +920,11 @@ def fig_hero(T, D: Data):
     c.ring(x0 + 7, ly - 4, 5.5, T["clm"], lw=2)
     w1 = c.text(x0 + 19, ly, CLM_NAME, size=11.5, weight=500, color=T["ink2"])
     c.dot(x0 + 19 + w1 + 22, ly - 4, 4.5, T["ours"], ring=0)
-    c.text(x0 + 19 + w1 + 32, ly, OURS_NAME, size=11.5, weight=500, color=T["ink2"])
+    w2 = c.text(x0 + 19 + w1 + 32, ly, OURS_NAME, size=11.5, weight=500, color=T["ink2"])
+    if has_chance:
+        kx = x0 + 19 + w1 + 32 + w2 + 22
+        c.line([kx, kx], [ly - 10.5, ly + 2.5], T["ink2"], lw=1.5, cap="butt")
+        c.text(kx + 8, ly, "chance", size=11.5, weight=500, color=T["ink2"])
     for cx, s in ((col_clm, CLM_NAME), (col_ours, "S1-Tweaks"), (col_d, "Change")):
         c.text(cx, ly, s, size=11.5, weight=600, color=T["ink2"], ha="right")
 
@@ -888,6 +949,9 @@ def fig_hero(T, D: Data):
             yc = y + ROW / 2
             c.text(16, yc + 4.5, r["label"], size=12.5, color=T["ink2"] if faded else T["ink"])
             a, b = X(r["clm"]), X(r["ours"])
+            if r.get("chance") is not None:
+                kx = X(r["chance"] / 100)
+                c.line([kx, kx], [yc - 7, yc + 7], T["ink2"], lw=1.5, cap="butt", alpha=T["fade"] if faded else 1.0)
             if abs(b - a) > 1.5:
                 link = T["ours_dim"] if b > a else T["bad"] if r["sign"] < 0 else T["axis"]
                 c.line([a, b], [yc, yc], link, lw=3, cap="butt", alpha=T["fade"] if faded else 1.0)
@@ -895,7 +959,8 @@ def fig_hero(T, D: Data):
             c.dot(b, yc, 4.0, T["ours"], ring=1.5, alpha=T["fade"] if faded else 1.0)
             numbers(r, yc + 4.5, faded)
             shown.append(dict(group=gtitle, **{k: r[k] for k in ("label", "clm_txt", "ours_txt", "delta")},
-                              colour=COLOUR_NAME[r["sign"]]))
+                              colour=COLOUR_NAME[r["sign"]],
+                              **({"chance": f"{r['chance']:.1f}"} if r.get("chance") is not None else {})))
             y += ROW
         if kind == "agent" and shield_off:
             # the caveat sits with the T-Rex claim: the same game without the safety shield
@@ -968,9 +1033,14 @@ def fig_heldout(T, D: Data):
     else:
         title = f"{CLM_NAME}, {OURS_NAME} and {ROUTER_NAME} on tests no head was trained on"
     total = sum(rows_n[k] for k, *_ in sources)
-    c.header(title, f"{total:,} rows from {len(sources)} public sources that none of our training touched. Top-1 "
-                    f"accuracy in %, {MD_ONLY['heldout_options']}. {ROUTER_NAME} is our fully post-trained head; "
-                    f"{OURS_NAME} blends {round(RELEASE_ALPHA * 100):g}% of it into {CLM_NAME}'s head.")
+    chances = {k: D.chance(k) for k, *_ in sources}
+    n_opts = sorted({round(100 / v) for v in chances.values() if v})
+    opts_txt = (f"{n_opts[0]} to {n_opts[-1]} options per question" if len(n_opts) > 1 else
+                f"{n_opts[0]} options per question" if n_opts else "up to 10 options per question")
+    c.header(title, f"{total:,} rows that we built as multiple-choice tests from public sets: "
+                    f"{D.heldout_what([k for k, *_ in sources])}. Top-1 accuracy in %, {opts_txt}. These are not the "
+                    f"benchmarks' own metrics. {ROUTER_NAME} is our fully post-trained head; {OURS_NAME} blends "
+                    f"{round(RELEASE_ALPHA * 100):g}% of it into {CLM_NAME}'s head.")
 
     x0, x1 = 212, 668
     top_v = max(max(v[k] for k, *_ in sources) for v in acc.values())
@@ -982,7 +1052,10 @@ def fig_heldout(T, D: Data):
     for _, name, col in heads:
         c.rect(lx, ly - 10, 12, 12, col, r=2.5)
         lx += 18 + c.text(lx + 18, ly, name, size=11.5, weight=500, color=T["ink2"]) + 22
-    c.text(W - 16, ly, f"value, and change against {CLM_NAME}", size=11, color=T["muted"], ha="right")
+    if any(v is not None for v in chances.values()):
+        c.line([lx + 2, lx + 2], [ly - 10.5, ly + 2.5], T["ink"], lw=1.5, cap="butt")
+        c.text(lx + 10, ly, "chance", size=11.5, weight=500, color=T["ink2"])
+    c.text(W - 16, ly, f"value, change vs {CLM_NAME}", size=11, color=T["muted"], ha="right")
 
     y = top
     shown = {}
@@ -1011,6 +1084,9 @@ def fig_heldout(T, D: Data):
                     parts.append((f"  {signed(round(v - base, 1))}", 400, T["ink2"]))
                 c.rich(X(v) + 7, yc + 3.8, parts, size=11)
                 shown.setdefault(name, {"rows": rows_n[key]})[hname] = f"{v:.1f}"
+            if chances.get(key) is not None:  # a random pick among this source's options
+                c.line([X(chances[key]), X(chances[key])], [yb - 1, yb + block + 1], T["ink"], lw=1.5, cap="butt")
+                shown[name]["chance"] = f"{chances[key]:.1f}"
             y += block + GAP
     labels = [b for b in c.boxes[n0:] if b[0] >= x0]
     for grid_z, g0, g1 in grids:
@@ -1060,15 +1136,18 @@ def fig_blend(T, D: Data):
     rel = next((p for p in pts if is_rel(p)), None)
     H = 612
     c = Canvas(W, H, T, "blend-tradeoff")
-    # the "why" title holds only while every blend above the released one lost at least one game
+    # this title holds only while every blend above the released one lost at least one game
     above = [p for p in tp if p["alpha"] > RELEASE_ALPHA]
+    n_games = sorted({p["trex"]["seeds"] for p in tp})
     if rel and above and all(p["trex"]["survived"] < p["trex"]["seeds"] for p in above):
-        title = (f"Why {round(RELEASE_ALPHA * 100):g}%: held-out accuracy keeps rising with the blend, "
-                 f"T-Rex survival does not")
+        title = "Held-out accuracy rises with every step of the blend. T-Rex survival does not"
     else:
         title = "Blend weight against T-Rex survival and held-out accuracy"
-    c.header(title, f"Weight blends of {CLM_NAME}'s post-trained head (0) and our fully post-trained head "
-                    f"(1, released as {ROUTER_NAME}). Each point is a measured blend; none had extra training.")
+    sub_txt = (f"Weight blends of {CLM_NAME}'s post-trained head (0) and our fully post-trained head "
+               f"(1, released as {ROUTER_NAME}). Each point is a measured blend; none had extra training.")
+    if len(n_games) == 1:
+        sub_txt += f" T-Rex is {n_games[0]:g} games per blend, so one game either way is noise."
+    c.header(title, sub_txt)
 
     x0, x1 = 60, 616
     alphas = [p["alpha"] for p in pts]
@@ -1133,8 +1212,9 @@ def fig_blend(T, D: Data):
         lab = f"{run['survived']:g}/{run['seeds']:g}"
         c.text(x, ty_top - 7, lab, size=11.5, weight=700 if is_rel(p) else 600, ha="center")
         trex_shown[alpha_txt(p["alpha"])] = lab
-        for m in p["more"]:
-            s = f"{m['seeds']:g} fresh seeds: {m['survived']:g}/{m['seeds']:g}"
+        for m in p["more"]:  # a later, longer run of the same head: it replays the first run's seeds
+            s0 = MD_ONLY["trex_seeds_start_at"]
+            s = f"seeds {s0:g} to {s0 + m['seeds'] - 1:g}: {m['survived']:g}/{m['seeds']:g}"
             w = text_w(s, 11, 500)
             tx = min(max(x - w / 2, 16), W - 16 - w)
             c.text(tx, ty_top - 26, s, size=11, weight=500, color=T["ink2"])
@@ -1209,7 +1289,7 @@ def fig_blend(T, D: Data):
         cap += f" {DOT} the axis is stretched below {AXIS_BREAK:g}, where {n_low} of the {len(alphas)} blends sit"
     c.text((x0 + x1) / 2, by_bot + 58, cap, size=11.5, color=T["muted"], ha="center")
     c.footer()
-    return c, dict(title=title, trex_survived=trex_shown, trex_fresh_seeds=more_shown, heldout_top1=held_shown,
+    return c, dict(title=title, trex_survived=trex_shown, trex_second_run=more_shown, heldout_top1=held_shown,
                    released=alpha_txt(RELEASE_ALPHA) if rel else None)
 
 
@@ -1225,7 +1305,7 @@ def fig_quant(T, D: Data):
     acc = {k: load_json(D.res / f) if f else None for k, (_, f) in variants}
     base_key = variants[0][0]
     ref = acc.get(base_key)
-    short = str(lengths[0])
+    at = str(256 if 256 in lengths else lengths[len(lengths) // 2])   # the prompt length quoted in the title
     name = lambda k: LATENCY_LABELS.get(k, (k,))[0]  # noqa: E731
     has = lambda a, m: bool(a) and is_num(a.get(m))  # noqa: E731
 
@@ -1248,12 +1328,12 @@ def fig_quant(T, D: Data):
     H = 400 + body_h + 62
     c = Canvas(W, H, T, "quantization")
     if cheap:
-        best = min(cheap, key=lambda k: lat[k][short])
-        title = (f"{name(best)} backbone: {up1(lat[best][short])} ms, not {up1(lat[base_key][short])} ms, "
+        best = min(cheap, key=lambda k: lat[k][at])
+        title = (f"{name(best)} backbone: {up1(lat[best][at])} ms, not {up1(lat[base_key][at])} ms, at {at} tokens, "
                  f"for {costs[best]:.1f} points." + "".join(f" {name(k)} costs {costs[k]:.1f}." for k in dear))
     else:
-        fast = min((k for k, _ in variants), key=lambda k: lat[k][short])
-        title = f"{name(fast)} backbone: {up1(lat[fast][short])} ms, not {up1(lat[base_key][short])} ms"
+        fast = min((k for k, _ in variants), key=lambda k: lat[k][at])
+        title = f"{name(fast)} backbone: {up1(lat[fast][at])} ms, not {up1(lat[base_key][at])} ms, at {at} tokens"
     c.header(title, "Top: time for one backbone pass at three prompt lengths, and what each quantized backbone costs in "
                     "tricky Q&A accuracy. Bottom: the same for the small head and the cached option vectors."
                     + (" Quantized activations break the head." if "int8-dyn" in broke else ""))
@@ -1412,9 +1492,10 @@ def fig_layouts(T, D: Data):
     ratio = shared["params"] / base["params"]
     share_txt = "half the parameters" if 0.45 <= ratio <= 0.55 else f"{ratio * 100:.0f}% of the parameters"
     steps = base.get("step")
-    c.header(f"One shared head: {signed(dg)} points general accuracy with {share_txt}",
+    c.header(f"After {steps:,} steps, one shared head is {abs(dg):.1f} points {'ahead' if dg >= 0 else 'behind'} "
+             f"with {share_txt}",
              f"CPU sweep, every layout trained from scratch on the same budget ({MD_ONLY['cpu_sweep_pairs']} pairs, "
-             f"{steps:,} steps). Early training: this ranks how fast a layout learns, not where it ends up.")
+             f"{steps:,} steps, one seed). Early training: this ranks how fast a layout learns, not where it ends up.")
 
     # ---- left: accuracy against parameter count, two small scatters ----------------------------
     px0, px1 = 56, 440
@@ -1649,12 +1730,14 @@ def fig_architecture(T, D: Data):
     c.rect(16, y - 10, 12, 12, T["box"], r=2.5, edge=T["box_edge"], lw=1)
     c.text(36, y, f"Unchanged from {CLM_NAME}. Option vectors can be cached, so a decision costs one backbone pass.",
            size=12, color=T["ink2"])
-    lat = (D.trex_first(OURS_RUN) or {}).get("latency_ms_p50_median")
-    if is_num(lat):
-        c.text(36, y + 18, f"Median latency in our T-Rex runs: {lat:g} ms per decision on one L40S.", size=12,
-               color=T["ink2"])
+    lat = D.trex_latency_range()
+    if lat:
+        lo, hi = f"{lat[0]:.0f}", f"{lat[1]:.0f}"
+        c.text(36, y + 18, f"Median latency in our T-Rex runs: {lo if lo == hi else f'{lo} to {hi}'} ms per decision "
+                           f"on one L40S.", size=12, color=T["ink2"])
     c.footer(f"Model: Kwok et al., Contrastive Language Models, 2026 {DOT} diagram: {REPO}")
-    return c, dict(in_dim=in_dim, width=width, proj=proj, per_head=per_head, latency_ms_p50=lat)
+    return c, dict(in_dim=in_dim, width=width, proj=proj, per_head=per_head,
+                   latency_ms_p50_range=list(lat) if lat else None)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1682,8 +1765,8 @@ def social_preview(D: Data, out: Path):
             name = next((n for k, n, *_ in HELDOUT_SOURCES if k == key), key.upper())
             tiles.append(dict(before=f"{heads[CLM_TREX_RUN][key]:.1f}", after=f"{heads[OURS_RUN][key]:.1f}%",
                               label=label, sub=f"{name.split()[0]}: {CLM_NAME} {ARROW} {OURS_NAME}"))
-    tiles.append(dict(after=f"{to['survived']:g} of {to['seeds']:g}", label="T-Rex games survived",
-                      sub=f"shield on. {CLM_NAME}: {tc['survived']:g} of {tc['seeds']:g}"))
+    tiles.append(dict(after=f"{to['survived']:g} of {to['seeds']:g}", label="T-Rex games, shield on",
+                      sub=f"survived. {CLM_NAME}: {tc['survived']:g} of {tc['seeds']:g}"))
     x, tw, ty = 72, 392, 352
     for i, t in enumerate(tiles):
         tx = x + i * tw
@@ -1697,9 +1780,9 @@ def social_preview(D: Data, out: Path):
         c.text(tx, ty + 42, t["label"], size=22, weight=600)
         c.text(tx, ty + 72, t["sub"], size=18, color=T["ink2"])
 
-    blend = f"{round(RELEASE_ALPHA * 100):g}%"
     off_c, off_o = D.trex_first(CLM_TREX_RUN, "noshield"), D.trex_first(OURS_RUN, "noshield")
-    c.text(72, SH - 116, f"{OURS_NAME} is a {blend} weight blend of two small heads. No extra training.",
+    c.text(72, SH - 116, f"{OURS_NAME} = {round((1 - RELEASE_ALPHA) * 100):g}% {CLM_NAME}'s head + "
+                         f"{round(RELEASE_ALPHA * 100):g}% our post-trained copy of it. No extra training.",
            size=21, color=T["ink2"])
     c.text(72, SH - 84, f"Every experiment in the repo: about ${MD_ONLY['modal_spend_usd']} of cloud GPU time "
                         f"in total.", size=21, color=T["ink2"])
@@ -1745,6 +1828,7 @@ def main(argv=None) -> int:
     if unknown:
         warn(f"unknown figure name: {', '.join(sorted(unknown))}. Choose from {', '.join(FIGURES)}, social-preview")
     rel = lambda p: p.relative_to(ROOT) if p.is_relative_to(ROOT) else p  # noqa: E731
+    log = sys.stderr if args.numbers else sys.stdout   # with --numbers, stdout holds only the JSON
     numbers, failed = {}, 0
     for name, (fn, desc) in FIGURES.items():
         if only and name not in only:
@@ -1759,12 +1843,12 @@ def main(argv=None) -> int:
             path = args.out / f"{name}-{theme}.svg"
             c.save_svg(path, desc, f"{desc}. Generated by scripts/make_figures.py from results/innovations/.")
             numbers[name] = shown
-            print(f"wrote {rel(path)}")
+            print(f"wrote {rel(path)}", file=log)
     if not only or "social-preview" in only:
         try:
             path = args.out / "social-preview.png"
             numbers["social-preview"] = social_preview(D, path)
-            print(f"wrote {rel(path)}")
+            print(f"wrote {rel(path)}", file=log)
         except Skip as e:
             warn(f"social-preview: skipped, {e}")
             failed += 1
