@@ -20,8 +20,8 @@ which is what the official CLM engine computes (clm/heads.py, clm/engine.py).
 
     python -m innovations.scorer clm        # print the layout, parameter count and scale of a head
 
-Checkpoints are read with torch.load(weights_only=True): tensors and plain Python types only, so a
-downloaded file cannot run code on load.
+Checkpoints are read with torch.load(weights_only=True), which accepts tensors and plain Python
+types only. Use torch 2.6 or newer: older versions had a flaw in that mode.
 """
 from __future__ import annotations
 
@@ -48,7 +48,8 @@ CLM_REVISION = "e939398d4556fcd9400c76fa8c5a513202f42b0a"
 
 RELEASE_URL = "https://github.com/samstealth/system-one-model-tweaks/releases/download/v0.1/"
 
-# S1-Tweaks v0.1: 85% CLM's head + 15% S1-Router, blended in weight space (run wise_0.15). Keeps most of CLM's agent skill.
+# S1-Tweaks v0.1: 85% CLM's head + 15% S1-Router, blended in weight space (run wise_0.15). With the T-Rex safety
+# shield on it survived 19 of 20 games against 20 of 20 for CLM's head. With the shield off the T-Rex skill is gone.
 S1_TWEAKS_NAME = "S1-Tweaks v0.1"
 S1_TWEAKS_FILE = "s1_tweaks_v0.1.pt"
 S1_TWEAKS_URL = RELEASE_URL + S1_TWEAKS_FILE
@@ -116,9 +117,9 @@ def _download_release(name, fname, url, sha256, env, how_to_build, force=False):
         if not os.path.isfile(local):
             raise HeadNotAvailable(f"{env} is set to {local}, which is not a file.")
         return local
-    options = (f"  - pass a local copy: --head /path/to/{fname} (or set {env} to that path)\n"
-               f"  - build it yourself with {how_to_build} (see docs/REPRODUCE.md)\n"
-               "  - use CLM's own head: load_head(\"clm\")")
+    options = (f"  - use a local copy: give its path in place of the name (in the demo: --head /path/to/{fname}),\n"
+               f"    or set {env} to that path\n"
+               f"  - build it yourself with {how_to_build} (see docs/REPRODUCE.md)")
     dest = os.path.join(cache_dir(), fname)
     fresh = force or not os.path.isfile(dest)
     try:

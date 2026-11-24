@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Matched-budget comparison of head layouts on a slice of the Qwen3-8B vectors.
 # Every run: same 12 training chunks (1.2M pairs), batch 1024, 3000 steps, seed 1234.
-# Usage: ROOT=/home/user/data OUT=/home/user/runs bash innovations/sweep_cpu.sh
+# Usage: ROOT=data OUT=runs bash innovations/sweep_cpu.sh
 set -u
 ROOT=${ROOT:-/data}; OUT=${OUT:-runs}; STEPS=${STEPS:-3000}
 COMMON="--root $ROOT --steps $STEPS --batch 1024 --eval-every 1000 --gen-limit 20480 --hn-limit 20000"

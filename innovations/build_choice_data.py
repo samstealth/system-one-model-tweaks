@@ -26,7 +26,7 @@ the same question are the hard negatives. Sources (all public, ungated on Huggin
 Held out for testing: banking77 test, clinc test, ARC-Challenge test, CSQA validation, and 3%
 of glaive / labeled rows. Output: <out>/choice_{train,test}.jsonl
 
-    python -m innovations.build_choice_data --src /home/user/data/choice_src --out /home/user/data/choice
+    python -m innovations.build_choice_data --src choice_src --out choice
 """
 import argparse
 import ast

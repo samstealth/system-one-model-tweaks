@@ -21,9 +21,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 # Enough for the scorer, the no-GPU demo, the trainer and the tests.
+# torch 2.6 or newer: older versions had a flaw in torch.load(weights_only=True), the mode the loader relies on.
 dependencies = [
     "numpy>=1.24",
-    "torch>=2.1",
+    "torch>=2.6",
     "pyarrow>=14",
     "huggingface_hub>=0.20",
 ]

@@ -13,19 +13,13 @@ abstract: >-
   was read from and with its limits.
 type: software
 authors:
-  # TODO for the owner: this entry holds only the GitHub alias. If you want to be cited by name,
-  # replace it with a person entry, for example:
-  #   - family-names: "Your family name"
-  #     given-names: "Your given name"
-  #     alias: "samstealth"
   - name: "samstealth"
     alias: "samstealth"
     website: "https://github.com/samstealth"
 repository-code: "https://github.com/samstealth/system-one-model-tweaks"
 url: "https://github.com/samstealth/system-one-model-tweaks"
 license: Apache-2.0
-version: "0.1.0"
-# TODO for the owner: add "date-released: YYYY-MM-DD" once the v0.1 release is published.
+version: "0.1"
 keywords:
   - system-one
   - decision model

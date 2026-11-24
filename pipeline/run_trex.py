@@ -1,3 +1,5 @@
+# Changed from VizuaraAI/system-one-from-scratch (Apache 2.0) for System One Model Tweaks, November 2026.
+# NOTICE, section 1, lists the changes.
 """Play the repo's T-Rex benchmark with a chosen head, recording every run for the side-by-side.
 
     modal run --detach run_trex.py --tag authors --ckpt authors

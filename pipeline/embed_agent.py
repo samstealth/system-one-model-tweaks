@@ -1,3 +1,5 @@
+# Changed from VizuaraAI/system-one-from-scratch (Apache 2.0) for System One Model Tweaks, November 2026.
+# NOTICE, section 1, lists the changes.
 """Embed the agent (state, action) pairs with frozen Qwen3-8B, using the repo's token recipe:
 last-token pooling, L2 normalized, float16. States keep their most recent 2047 tokens, actions their
 first 2047. We cap at 2048 tokens, the serving default, to keep this affordable.

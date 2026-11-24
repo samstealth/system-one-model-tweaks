@@ -44,8 +44,8 @@ DEFAULT_BACKBONE = "Qwen/Qwen3-8B"
 CAP = 2047  # tokens per text, the serving default (vLLM --max-model-len 2048)
 
 # A realistic decision: the agent has one request and a handful of tools, and must pick one.
-# Measured on one L40S with Qwen/Qwen3-8B in bf16 (23 Nov 2026): every head picks create_ticket,
-# with probability 0.72 (CLM-8B), 0.82 (S1-Tweaks v0.1) and 0.96 (S1-Router v0.1).
+# Run once on one L40S with Qwen/Qwen3-8B in bf16 (23 Nov 2026): every head picked create_ticket.
+# The probabilities of that run were not saved to a result file, so none are quoted here.
 EXAMPLE = {
     "state": ("User request: The checkout page has been down for 20 minutes and I cannot fix it myself. "
               "Get the on-call engineer to look at it."),

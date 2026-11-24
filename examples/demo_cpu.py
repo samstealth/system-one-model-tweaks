@@ -12,6 +12,7 @@ GPU: see examples/route_text.py.
     python examples/demo_cpu.py --head /path/to/s1_tweaks_v0.1.pt    # one local head against CLM's
     python examples/demo_cpu.py --head s1-tweaks --head my_head.pt   # repeat --head to compare several
     python examples/demo_cpu.py --show 6 --disagreements             # decisions where the heads differ
+    python examples/demo_cpu.py --json hits.json                     # also save the hits per head and source
 """
 import argparse
 import json
@@ -88,8 +89,16 @@ def one_line(text, width):
     return text if len(text) <= width else text[:width - 3] + "..."
 
 
+SHOW_FIRST = ("glaive_fc", "banking77", "heldout_bfcl")  # one tool choice, one routing, one held-out decision
+
+
 def choose_rows(rows, picks, show, disagreements):
-    """Which decisions to print: the first of each source in turn, or only those where the heads differ."""
+    """Which decisions to print: one of each source in turn, or only those where the heads differ.
+
+    Tool choice, routing and a held-out source come first. Within a source, a state that is one
+    request comes before a state that carries earlier turns of a dialogue: about 4 in 10 Glaive
+    states do, with an end-of-text marker (README, Limitations). The accuracy table uses every row.
+    """
     idx = list(range(len(rows)))
     if disagreements and len(picks) > 1:
         names = list(picks)
@@ -97,6 +106,8 @@ def choose_rows(rows, picks, show, disagreements):
     by_source = {}
     for i in idx:
         by_source.setdefault(rows[i]["source"], []).append(i)
+    by_source = {s: sorted(by_source[s], key=lambda i: ("<|endoftext|>" in rows[i]["state"], i))
+                 for s in [s for s in SHOW_FIRST if s in by_source] + [s for s in by_source if s not in SHOW_FIRST]}
     out = []
     while len(out) < show and any(by_source.values()):
         for src in list(by_source):
@@ -134,14 +145,18 @@ def accuracy_table(rows, n_opts, gold, picks):
     w = max([len(s) for s in sources] + [len("source"), 3])
     print("  " + "source".ljust(w) + "n".rjust(7) + "chance".rjust(9) + "".join(h.rjust(col(h)) for h in names))
     acc = {h: {} for h in names}
+    hits = {"sources": {}, "heads": {h: {} for h in names}}
     for s in sources + ["all"]:
         m = np.ones(len(rows), bool) if s == "all" else src == s
-        line = "  " + s.ljust(w) + str(int(m.sum())).rjust(7) + f"{100 * (1 / n_opts[m]).mean():.1f}%".rjust(9)
+        chance = float((1 / n_opts[m]).mean())
+        hits["sources"][s] = {"n": int(m.sum()), "chance": round(chance, 4)}
+        line = "  " + s.ljust(w) + str(int(m.sum())).rjust(7) + f"{100 * chance:.1f}%".rjust(9)
         for h in names:
             acc[h][s] = float((picks[h][m] == gold[m]).mean())
+            hits["heads"][h][s] = int((picks[h][m] == gold[m]).sum())
             line += f"{100 * acc[h][s]:.1f}%".rjust(col(h))
         print(line)
-    return acc
+    return acc, hits
 
 
 def main(argv=None):
@@ -154,6 +169,8 @@ def main(argv=None):
                         "Repeat to compare several. Default: s1-tweaks and s1-router, each downloaded from the release page.")
     p.add_argument("--show", type=int, default=3, help="how many decisions to print (default 3)")
     p.add_argument("--disagreements", action="store_true", help="print only decisions where the heads pick differently")
+    p.add_argument("--json", default=None, metavar="FILE",
+                   help="also write the hits of each head per source to FILE, as JSON")
     a = p.parse_args(argv)
 
     q, opts, n_opts, gold, rows = load_sample(a.data)
@@ -197,11 +214,20 @@ def main(argv=None):
         print_decision(i, rows[i], len(rows), probs, picks)
 
     print(f"\nTop-1 accuracy on this sample ({len(rows)} decisions). Chance is the mean of 1 / number of options.")
-    acc = accuracy_table(rows, n_opts, gold, picks)
-    print(f"\nScored {len(rows)} decisions with {len(heads)} head{'s' if len(heads) > 1 else ''} in {took:.2f} s on CPU. "
-          "Only the heads ran here; the backbone vectors were computed in advance.")
+    acc, hits = accuracy_table(rows, n_opts, gold, picks)
+    print(f"\nScored {len(rows)} decisions with {len(heads)} head{'s' if len(heads) > 1 else ''} in {took:.2f} s on CPU.")
+    print("Only the heads ran here. The backbone vectors were computed in advance.")
     print("A sample this small gives rough numbers. Measured results and their limits: innovations/RESULTS.md")
-    return {"n": len(rows), "seconds": took, "accuracy": acc, "shown": shown}
+    if a.json:
+        out = {"note": "python examples/demo_cpu.py --json FILE: top-1 hits of each head on the demo sample, per source",
+               "date": time.strftime("%Y-%m-%d"), "sample": os.path.relpath(sample_paths(a.data)[0], os.path.dirname(HERE)),
+               "decisions": len(rows), **hits}
+        os.makedirs(os.path.dirname(os.path.abspath(a.json)), exist_ok=True)
+        with open(a.json, "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=1)
+            f.write("\n")
+        print(f"Wrote the hits per head and source to {a.json}")
+    return {"n": len(rows), "seconds": took, "accuracy": acc, "hits": hits, "shown": shown}
 
 
 if __name__ == "__main__":
